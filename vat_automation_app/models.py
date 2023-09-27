@@ -21,6 +21,18 @@ class CustomUser(AbstractUser):
         return self.username
 
 
+class OTP(models.Model):
+    token = models.CharField(max_length=8)
+    created_on = models.DateTimeField(auto_now_add=True)
+    expire_time = models.DateTimeField(auto_now_add=False)
+    reason = models.CharField(max_length=50, blank=True)
+
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return self.user.username
+
+
 CATEGORY_CHOICE = [
     ('Agriculture', 'Agriculture'),
     ('Salary Government', 'Salary Government'),

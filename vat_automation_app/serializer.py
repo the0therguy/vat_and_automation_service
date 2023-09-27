@@ -1,5 +1,9 @@
 from .models import *
 from rest_framework import serializers
+from datetime import datetime, timedelta
+import random
+import string
+from django.core.mail import send_mail
 
 
 class CategorySetupSerializer(serializers.ModelSerializer):
@@ -42,3 +46,52 @@ class SlabSerializer(serializers.ModelSerializer):
     class Meta:
         model = Slab
         fields = '__all__'
+
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'username', 'full_name', 'email', 'password', 'phone_number')
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = CustomUser.objects.create_user(**validated_data)
+        user.set_password(password)
+        user.save()
+
+        # Generate and save OTP
+        otp = self.generate_otp()
+        self.save_otp(user, otp)
+
+        # Send OTP via email (as shown in the previous response)
+        self.send_otp_email(user, otp)  # New line to call the email sending function
+
+        return user
+
+    def generate_otp(self):
+        digits = string.digits
+        otp = ''.join(random.choice(digits) for i in range(5))
+        return otp
+
+    def save_otp(self, user, otp):
+        otp_expiry = datetime.now() + timedelta(minutes=15)
+        OTP.objects.create(token=otp, expire_time=otp_expiry, user=user)
+
+    def send_otp_email(self, user, otp):
+        subject = 'Your OTP Code'
+        message = f'Your OTP code is: {otp}'
+        from_email = 'email'  # Replace with your sender email
+        recipient_list = [user.email]
+
+        send_mail(subject, message, from_email, recipient_list)
+
+
+class OTPVerificationSerializer(serializers.Serializer):
+    otp_token = serializers.CharField(max_length=8)
+
+
+class OTPResendSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)

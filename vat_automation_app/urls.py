@@ -19,4 +19,7 @@ urlpatterns = [
     path('api/v1/slab-create/', SlabCreateView.as_view(), name='slab-create'),
     path('api/v1/slab-list/', SlabListView.as_view(), name='slab-list'),
     path('api/v1/slab-retrieve/<int:slab_id>/', SlabRetrieveView.as_view(), name='slab-retrieve'),
+    path('api/v1/signup/', CustomUserCreateView.as_view(), name='signup'),
+    path('api/v1/verify-otp/<int:id>/', OTPVerificationView.as_view(), name='otp_verification_view'),
+    path('api/v1/resend-otp/<int:id>/', OTPResendView.as_view(), name='resend_otp'),
 ]

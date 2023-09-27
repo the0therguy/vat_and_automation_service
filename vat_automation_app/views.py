@@ -7,8 +7,12 @@ from .serializer import *
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from django.db.models import F
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import generics, status
 from django.shortcuts import get_object_or_404
+from datetime import datetime, timedelta
+import random
+import string
+from django.core.mail import send_mail
 
 
 # Create your views here.
@@ -132,3 +136,80 @@ class SlabRetrieveView(APIView):
             return Response("No slab found with this email", status=status.HTTP_404_NOT_FOUND)
         slab.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CustomUserCreateView(generics.CreateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = CustomUserSerializer
+    permission_classes = (AllowAny,)
+
+
+class OTPVerificationView(generics.CreateAPIView):
+    permission_classes = (AllowAny,)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return OTPVerificationSerializer
+
+    def post(self, request, *args, **kwargs):
+        otp_token = request.data.get('otp_token')
+        id = kwargs.get('id')  # Assuming you pass the user ID as a URL parameter
+
+        try:
+            otp = OTP.objects.get(user__id=id, token=otp_token, expire_time__gte=datetime.now())
+        except OTP.DoesNotExist:
+            return Response({"message": "Invalid OTP or OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # If OTP is valid, activate the user or perform any other required action
+        user = CustomUser.objects.get(id=id)
+        user.is_active = True
+        user.email_verified = True
+        user.save()
+
+        # Optionally, delete the OTP entry once it's verified and used
+        otp.delete()
+
+        return Response({"message": "Account activated successfully"}, status=status.HTTP_200_OK)
+
+
+class OTPResendView(generics.CreateAPIView):
+    serializer_class = OTPResendSerializer
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        id = request.data.get('id')  # Get the username from the request data
+
+        try:
+            user = CustomUser.objects.get(id=id)
+        except CustomUser.DoesNotExist:
+            return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Generate and save new OTP
+        otp = self.generate_otp()
+        self.save_otp(user, otp)
+
+        # Send new OTP via email
+        self.send_otp_email(user, otp)
+
+        return Response({"message": "New OTP sent successfully"}, status=status.HTTP_200_OK)
+
+    def generate_otp(self):
+        digits = string.digits
+        otp = ''.join(random.choice(digits) for i in range(5))
+        return otp
+
+    def save_otp(self, user, otp):
+        otp_expiry = datetime.now() + timedelta(minutes=15)
+        OTP.objects.create(token=otp, expire_time=otp_expiry, user=user)
+
+    def send_otp_email(self, user, otp):
+        current_site = get_current_site(self.request)
+        mail_subject = 'Your New OTP'
+        message = render_to_string('otp_email_template.html', {
+            'user': user,
+            'otp': otp,
+            'domain': current_site.domain,
+            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+        })
+        to_email = user.email
+        send_mail(mail_subject, message, 'your_email@example.com', [to_email])
