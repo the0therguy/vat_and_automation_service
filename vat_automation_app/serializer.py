@@ -95,3 +95,8 @@ class OTPVerificationSerializer(serializers.Serializer):
 
 class OTPResendSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)

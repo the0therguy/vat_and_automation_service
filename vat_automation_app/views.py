@@ -213,3 +213,27 @@ class OTPResendView(generics.CreateAPIView):
         })
         to_email = user.email
         send_mail(mail_subject, message, 'your_email@example.com', [to_email])
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+
+        if serializer.is_valid():
+            old_password = serializer.data.get('old_password')
+            new_password = serializer.data.get('new_password')
+
+            # Check if the old password matches the current password
+            if not check_password(old_password, request.user.password):
+                return Response({"message": "Old password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Change the password and save the user object
+            request.user.set_password(new_password)
+            request.user.save()
+            create_user_activity({'action': 'update',
+                                  'message': f"{request.user.username}'s password updated",
+                                  'created_by': request.user})
+            return Response({"message": "Password changed successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
