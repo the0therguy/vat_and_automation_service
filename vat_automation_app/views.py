@@ -302,4 +302,4 @@ class TransactionView(APIView):
                 return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             detail_serializer.save()
             details_data.append(detail_serializer.data)
-        return Response(details_datastatus=status.HTTP_200_OK)
+        return Response(details_data, status=status.HTTP_200_OK)
