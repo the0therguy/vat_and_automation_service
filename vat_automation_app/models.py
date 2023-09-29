@@ -40,11 +40,16 @@ CATEGORY_CHOICE = [
     ('House Income', 'House Income'),
     ('Business', 'Business')
 ]
+TYPE_CHOICE = [
+    ('Mandatory', 'Mandatory'),
+    ('Optional', 'Optional')
+]
 
 
 class CategorySetup(models.Model):
     category_name = models.CharField(max_length=220, choices=CATEGORY_CHOICE, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
+    type = models.CharField(max_length=50, choices=TYPE_CHOICE, default='Optional')
     tax_exempted = models.BooleanField(default=False)
     aggregated = models.CharField(max_length=220, null=True, blank=True)
     active = models.BooleanField(default=True)
@@ -57,10 +62,8 @@ class CategorySetup(models.Model):
 
 
 NATURE_CHOICE = [
-    ('Residential', 'Residential'),
-    ('Non-Residential', 'Non-Residential'),
     ('Service', 'Service'),
-    ('Product', 'Product')
+    ('Other', 'Other')
 ]
 
 

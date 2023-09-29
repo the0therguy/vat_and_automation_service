@@ -112,3 +112,15 @@ class PersonalDetailsUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = PersonalDetails
         exclude = ('date', 'income_year_ended_on', 'user', 'assessment_year', 'email')
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transaction
+        fields = '__all__'
+
+
+class DetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Details
+        fields = '__all__'

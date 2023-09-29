@@ -278,3 +278,28 @@ class PersonalDetailsView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TransactionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        transaction = Transaction.objects.filter(user=request.user)
+        serializer = TransactionSerializer(transaction, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        details = request.data.pop('details', None)
+        transaction_serializer = TransactionSerializer(request.data)
+        if not transaction_serializer.is_valid():
+            return Response(transaction_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        transaction_serializer.save()
+        details_data = []
+        for detail in details:
+            detail['transaction'] = transaction_serializer.get('id')
+            detail_serializer = DetailsSerializer(detail)
+            if not detail_serializer:
+                return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            detail_serializer.save()
+            details_data.append(detail_serializer.data)
+        return Response(details_datastatus=status.HTTP_200_OK)
