@@ -100,3 +100,15 @@ class OTPResendSerializer(serializers.Serializer):
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
+
+
+class PersonalDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PersonalDetails
+        fields = '__all__'
+
+
+class PersonalDetailsUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PersonalDetails
+        exclude = ('date', 'income_year_ended_on', 'user', 'assessment_year', 'email')

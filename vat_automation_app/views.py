@@ -237,3 +237,44 @@ class ChangePasswordView(APIView):
                                   'created_by': request.user})
             return Response({"message": "Password changed successfully."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PersonalDetailsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, user):
+        try:
+            return PersonalDetails.objects.get(user=user)
+        except PersonalDetails.DoesNotExist:
+            return None
+
+    def get(self, request):
+        personal_details = self.get_object(request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_404_NOT_FOUND)
+        serializer = PersonalDetailsSerializer(personal_details)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        if not request.user.email_verified:
+            return Response('Email not verified', status=status.HTTP_400_BAD_REQUEST)
+        request.data['user'] = request.user.id
+        request.data['income_year_ended_on'] = datetime(datetime.now().year, 6, 30).date()
+        request.data['assessment_year'] = str(datetime.now().year) + '-' + str(
+            datetime.now().year + 1)[2:]
+        request.data['email'] = request.user.email
+        serializer = PersonalDetailsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+        personal_details = self.get_object(request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_404_NOT_FOUND)
+        serializer = PersonalDetailsUpdateSerializer(personal_details, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -138,7 +138,7 @@ class PersonalDetails(models.Model):
     assessment_year = models.CharField(max_length=50, null=True, blank=True)
     assess_name = models.CharField(max_length=220)
     address = models.TextField()
-    data_of_birth = models.DateField()
+    date_of_birth = models.DateField(null=True, blank=True)
     nid = models.CharField(max_length=50, null=True, blank=True)
     passport_number = models.CharField(max_length=50, null=True, blank=True)
     phone_number = models.CharField(max_length=15, unique=True)
