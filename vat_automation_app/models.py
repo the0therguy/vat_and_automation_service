@@ -91,7 +91,7 @@ class Details(models.Model):
 
 
 SELECT_ONE_CHOICE = [
-    ("General & Individual Firm", "General & Individual Firm"),
+    ("General - Individuals & Firms", "General - Individuals & Firms"),
     ("Woman and Senior Citizens (65+)", "Woman and Senior Citizens (65+)"),
     ("Third Gender", "Third Gender"),
     ("Physically challenged persons", "Physically challenged persons"),
@@ -118,3 +118,40 @@ class Report(models.Model):
 
     def __str__(self):
         return self.year
+
+
+RESIDENT_STATUS_CHOICE = [
+    ('Resident', 'Resident'),
+    ('Non-Resident', 'Non-Resident')
+]
+
+CITY_CHOICE = [
+    ('Any Other City Corporation', 'Any Other City Corporation'),
+    ('Any Area Other than City Corporation', 'Any Area Other than City Corporation'),
+    ('Dhaka or Chattagram City Corporation', 'Dhaka or Chattagram City Corporation')
+]
+
+
+class PersonalDetails(models.Model):
+    date = models.DateField(auto_now_add=True)
+    income_year_ended_on = models.DateField(auto_now_add=False)
+    assessment_year = models.CharField(max_length=50, null=True, blank=True)
+    assess_name = models.CharField(max_length=220)
+    address = models.TextField()
+    data_of_birth = models.DateField()
+    nid = models.CharField(max_length=50, null=True, blank=True)
+    passport_number = models.CharField(max_length=50, null=True, blank=True)
+    phone_number = models.CharField(max_length=15, unique=True)
+    email = models.EmailField(unique=True)
+    tin = models.CharField(max_length=50)
+    circle = models.IntegerField()
+    tax_zone = models.CharField(max_length=50)
+    resident_status = models.CharField(max_length=50, choices=RESIDENT_STATUS_CHOICE, default='Resident')
+    city = models.CharField(max_length=220, choices=CITY_CHOICE, default='Dhaka or Chattagram City Corporation')
+    are_you = models.CharField(max_length=220, choices=SELECT_ONE_CHOICE, default='General - Individuals & Firms')
+    legal_guardian = models.BooleanField(default=False)
+
+    user = models.OneToOneField(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return self.user.email

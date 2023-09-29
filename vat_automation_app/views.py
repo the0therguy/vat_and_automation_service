@@ -177,10 +177,10 @@ class OTPResendView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
 
     def post(self, request, *args, **kwargs):
-        id = request.data.get('id')  # Get the username from the request data
+        user_id = kwargs.get('id')  # Get the user ID from the URL
 
         try:
-            user = CustomUser.objects.get(id=id)
+            user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
             return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
