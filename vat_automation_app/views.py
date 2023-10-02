@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
-
+import uuid
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializer import *
@@ -35,7 +35,7 @@ class CategorySetupListView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, category_name):
-        category_setup = CategorySetup.objects.filter(category_name=category_name).order_by('sequence')
+        category_setup = CategorySetup.objects.filter(category_name=category_name, active=True).order_by('sequence')
         serializer = CategorySetupSerializer(category_setup, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -263,6 +263,7 @@ class PersonalDetailsView(APIView):
         request.data['assessment_year'] = str(datetime.now().year) + '-' + str(
             datetime.now().year + 1)[2:]
         request.data['email'] = request.user.email
+        request.data['phone_number'] = request.user.phone_number
         serializer = PersonalDetailsSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -290,15 +291,20 @@ class TransactionView(APIView):
 
     def post(self, request):
         details = request.data.pop('details', None)
-        transaction_serializer = TransactionSerializer(request.data)
+        request.data['user'] = request.user.id
+        request.data['year'] = str(datetime.now().year) + '-' + str(
+            datetime.now().year + 1)[2:]
+        request.data['uuid'] = str(uuid.uuid4())
+        transaction_serializer = TransactionSerializer(data=request.data)
         if not transaction_serializer.is_valid():
             return Response(transaction_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         transaction_serializer.save()
         details_data = []
-        for detail in details:
-            detail['transaction'] = transaction_serializer.get('id')
-            detail_serializer = DetailsSerializer(detail)
-            if not detail_serializer:
+        for index, detail in enumerate(details):
+            detail['transaction'] = transaction_serializer.data.get('id')
+            detail['transaction_row'] = index + 1
+            detail_serializer = DetailsSerializer(data=detail)
+            if not detail_serializer.is_valid():
                 return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             detail_serializer.save()
             details_data.append(detail_serializer.data)

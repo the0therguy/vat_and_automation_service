@@ -38,19 +38,17 @@ CATEGORY_CHOICE = [
     ('Salary Government', 'Salary Government'),
     ('Salary Private', 'Salary Private'),
     ('House Income', 'House Income'),
-    ('Business', 'Business')
-]
-TYPE_CHOICE = [
-    ('Mandatory', 'Mandatory'),
-    ('Optional', 'Optional')
+    ('Business', 'Business'),
+    ('Rebate', 'Rebate'),
+    ('Expense', 'Expense')
 ]
 
 
 class CategorySetup(models.Model):
     category_name = models.CharField(max_length=220, choices=CATEGORY_CHOICE, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    type = models.CharField(max_length=50, choices=TYPE_CHOICE, default='Optional')
     tax_exempted = models.BooleanField(default=False)
+    required = models.BooleanField(default=False)
     aggregated = models.CharField(max_length=220, null=True, blank=True)
     active = models.BooleanField(default=True)
     sequence = models.IntegerField(default=1)
