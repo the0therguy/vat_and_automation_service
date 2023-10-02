@@ -74,6 +74,9 @@ SIMPLE_JWT = {
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 
+    'USER_STAFF_FIELD': 'is_staff',
+    'USER_STAFF_CLAIM': 'is_staff',
+
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
 

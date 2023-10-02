@@ -13,6 +13,8 @@ from datetime import datetime, timedelta
 import random
 import string
 from django.core.mail import send_mail
+from decimal import Decimal
+from .script import *
 
 
 # Create your views here.
@@ -294,18 +296,63 @@ class TransactionView(APIView):
         request.data['user'] = request.user.id
         request.data['year'] = str(datetime.now().year) + '-' + str(
             datetime.now().year + 1)[2:]
-        request.data['uuid'] = str(uuid.uuid4())
-        transaction_serializer = TransactionSerializer(data=request.data)
-        if not transaction_serializer.is_valid():
-            return Response(transaction_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        transaction_serializer.save()
+        transaction = Transaction.objects.filter(**request.data)
+        if not transaction:
+            request.data['uuid'] = str(uuid.uuid4())
+            transaction_serializer = TransactionSerializer(data=request.data)
+            if not transaction_serializer.is_valid():
+                return Response(transaction_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            transaction_serializer.save()
+        else:
+            transaction_serializer = TransactionSerializer(transaction)
+        report, create = Report.objects.get_or_create(user=request.user, year=request.data['year'])
         details_data = []
+        tax_amount = 0
         for index, detail in enumerate(details):
             detail['transaction'] = transaction_serializer.data.get('id')
             detail['transaction_row'] = index + 1
             detail_serializer = DetailsSerializer(data=detail)
             if not detail_serializer.is_valid():
                 return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if detail['tex_exempted']:
+                tax_amount += detail['amount']
             detail_serializer.save()
             details_data.append(detail_serializer.data)
+        report.taxable_income += tax_amount
+        net_tax, income_slab = tax_calculator(user=request.user, amount=report.taxable_income + tax_amount)
+        report.income_slab = income_slab
+        report.net_tax = net_tax
+        report.save()
         return Response(details_data, status=status.HTTP_200_OK)
+
+
+# class ReportView(APIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     def get_object(self, year, user):
+#         try:
+#             return Report.objects.get(year=year, user=user)
+#         except Report.DoesNotExist:
+#             return None
+#
+#     def get(self, request):
+#         year = str(datetime.now().year) + '-' + str(
+#             datetime.now().year + 1)[2:]
+#
+#         report = self.get_object(year=year, user=request.user)
+#         if report:
+#             serializer = ReportSerializer(report)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#
+#         transactions = Transaction.objects.filter(user=request.user, year=year)
+#         for transaction in transactions:
+#             details = Details.objects.filter(transaction=transaction)
+
+class TestingView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, amount):
+        taxable_income = tax_calculator(user=request.user, amount=amount)
+        print(taxable_income)
+
+        return Response("Testing API", status=status.HTTP_200_OK)

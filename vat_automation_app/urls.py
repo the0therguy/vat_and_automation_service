@@ -24,5 +24,6 @@ urlpatterns = [
     path('api/v1/resend-otp/<int:id>/', OTPResendView.as_view(), name='resend_otp'),
     path('api/v1/change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('api/v1/personal-details/', PersonalDetailsView.as_view(), name='personal-details'),
-    path('api/v1/transaction/', TransactionView.as_view(), name='transaction-view')
+    path('api/v1/transaction/', TransactionView.as_view(), name='transaction-view'),
+    path('api/v1/test/<int:amount>/', TestingView.as_view())
 ]

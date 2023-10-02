@@ -121,8 +121,13 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class DetailsSerializer(serializers.ModelSerializer):
-    category = serializers.CharField(source='transaction.category_name', read_only=True)
 
     class Meta:
         model = Details
+        fields = '__all__'
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
         fields = '__all__'
