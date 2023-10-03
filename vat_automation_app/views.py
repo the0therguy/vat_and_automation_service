@@ -293,9 +293,11 @@ class TransactionView(APIView):
 
     def post(self, request):
         details = request.data.pop('details', None)
+        tin = PersonalDetails.objects.get(user=request.user).tin
         request.data['user'] = request.user.id
         request.data['year'] = str(datetime.now().year) + '-' + str(
             datetime.now().year + 1)[2:]
+        request.data['tin'] = tin
         transaction = Transaction.objects.filter(**request.data)
         if not transaction:
             request.data['uuid'] = str(uuid.uuid4())
@@ -311,18 +313,37 @@ class TransactionView(APIView):
         for index, detail in enumerate(details):
             detail['transaction'] = transaction_serializer.data.get('id')
             detail['transaction_row'] = index + 1
+
             detail_serializer = DetailsSerializer(data=detail)
             if not detail_serializer.is_valid():
                 return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            if detail['tex_exempted']:
+            if not detail['tax_exempted']:
                 tax_amount += detail['amount']
             detail_serializer.save()
             details_data.append(detail_serializer.data)
+        if request.data['category_name'] == 'Rebate':
+            rebate = Decimal(min((report.taxable_income * Decimal(0.03)), tax_amount * 0.15, 100000))
+            report.rebate = rebate
+            report.save()
+            transaction = Transaction.objects.get(id=transaction_serializer.data.get('id'))
+            transaction.taxable_income = report.taxable_income
+            transaction.save()
+            return Response(details_data, status=status.HTTP_200_OK)
+        slab_category = PersonalDetails.objects.get(user=user).are_you
+        legal_guardian = PersonalDetails.objects.get(user=user).legal_guardian
+
+        first_slab = Slab.objects.filter(select_one=slab_category).order_by('percentage').first()
+        if request.data['category_name'] == 'Salary Private':
+            tax_amount = tax_amount - min((tax_amount * 0.03),
+                                          first_slab.amount + 50000 if legal_guardian else first_slab.amount)
         report.taxable_income += tax_amount
         net_tax, income_slab = tax_calculator(user=request.user, amount=report.taxable_income + tax_amount)
         report.income_slab = income_slab
         report.net_tax = net_tax
         report.save()
+        transaction = Transaction.objects.get(id=transaction_serializer.data.get('id'))
+        transaction.taxable_income = report.taxable_income
+        transaction.save()
         return Response(details_data, status=status.HTTP_200_OK)
 
 
@@ -352,6 +373,7 @@ class TestingView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, amount):
+        print(amount)
         taxable_income = tax_calculator(user=request.user, amount=amount)
         print(taxable_income)
 

@@ -71,6 +71,9 @@ class Transaction(models.Model):
     category_name = models.CharField(max_length=220, null=True, blank=True)
     nature = models.CharField(max_length=220, choices=NATURE_CHOICE, null=True, blank=True)
     address = models.TextField(null=True, blank=True)
+    tin = models.CharField(max_length=50)
+    taxable_income = models.DecimalField(default=0.0, max_digits=10, decimal_places=2)
+
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
