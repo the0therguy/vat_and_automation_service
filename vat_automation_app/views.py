@@ -293,11 +293,12 @@ class TransactionView(APIView):
 
     def post(self, request):
         details = request.data.pop('details', None)
-        tin = PersonalDetails.objects.get(user=request.user).tin
+        personal_details = PersonalDetails.objects.get(user=request.user)
         request.data['user'] = request.user.id
         request.data['year'] = str(datetime.now().year) + '-' + str(
             datetime.now().year + 1)[2:]
-        request.data['tin'] = tin
+        request.data['tin'] = personal_details.tin
+        request.data['assess_name'] = personal_details.assess_name
         transaction = Transaction.objects.filter(**request.data)
         if not transaction:
             request.data['uuid'] = str(uuid.uuid4())
@@ -337,7 +338,8 @@ class TransactionView(APIView):
             tax_amount = tax_amount - min((tax_amount * 0.03),
                                           first_slab.amount + 50000 if legal_guardian else first_slab.amount)
         report.taxable_income += tax_amount
-        net_tax, income_slab = tax_calculator(user=request.user, amount=report.taxable_income + tax_amount)
+        net_tax, income_slab = tax_calculator(personal_details=personal_details,
+                                              amount=report.taxable_income + tax_amount)
         report.income_slab = income_slab
         report.net_tax = net_tax
         report.save()
@@ -347,34 +349,25 @@ class TransactionView(APIView):
         return Response(details_data, status=status.HTTP_200_OK)
 
 
-# class ReportView(APIView):
-#     permission_classes = [IsAuthenticated]
-#
-#     def get_object(self, year, user):
-#         try:
-#             return Report.objects.get(year=year, user=user)
-#         except Report.DoesNotExist:
-#             return None
-#
-#     def get(self, request):
-#         year = str(datetime.now().year) + '-' + str(
-#             datetime.now().year + 1)[2:]
-#
-#         report = self.get_object(year=year, user=request.user)
-#         if report:
-#             serializer = ReportSerializer(report)
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#
-#         transactions = Transaction.objects.filter(user=request.user, year=year)
-#         for transaction in transactions:
-#             details = Details.objects.filter(transaction=transaction)
-
 class TestingView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, amount):
         print(amount)
-        taxable_income = tax_calculator(user=request.user, amount=amount)
+        taxable_income = tax_calculator(personal_details=PersonalDetails.objects.get(user=request.user), amount=amount)
         print(taxable_income)
 
         return Response("Testing API", status=status.HTTP_200_OK)
+
+
+class SalaryReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        transaction = Transaction.objects.filter(user=request.user,
+                                                 year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:],
+                                                 category_name='Salary Government')
+        if not transaction:
+            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
+        serializer = SalaryReportSerializer(transaction)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -2,9 +2,9 @@ from .models import *
 from decimal import Decimal
 
 
-def tax_calculator(user, amount):
-    slab_category = PersonalDetails.objects.get(user=user).are_you
-    legal_guardian = PersonalDetails.objects.get(user=user).legal_guardian
+def tax_calculator(amount, personal_details):
+    slab_category = personal_details.are_you
+    legal_guardian = personal_details.legal_guardian
     slabs = Slab.objects.filter(select_one=slab_category).order_by('percentage')
     the_amount = Decimal(amount)
     taxable_income = Decimal(0.0)
