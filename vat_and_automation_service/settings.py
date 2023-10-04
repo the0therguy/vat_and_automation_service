@@ -131,27 +131,27 @@ WSGI_APPLICATION = 'vat_and_automation_service.wsgi.application'
 #     }
 # }
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'vat_tax_automation',
-#         'USER': 'postgres',
-#         'PASSWORD': 'postgres',
-#         'HOST': 'localhost',
-#         'PORT': '5433',
-#     }
-# }
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'vat_and_tax',
-        'USER': 'root',
-        'PASSWORD': 'qvV3MgL0GjsYVpLJRLx5KNDVBTs1BMiB',
-        'HOST': 'dpg-ckeh605tj22c73edb8u0-a.oregon-postgres.render.com',
-        'PORT': '5432',
+        'NAME': 'vat_tax_automation',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'localhost',
+        'PORT': '5433',
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'vat_and_tax',
+#         'USER': 'root',
+#         'PASSWORD': 'qvV3MgL0GjsYVpLJRLx5KNDVBTs1BMiB',
+#         'HOST': 'dpg-ckeh605tj22c73edb8u0-a.oregon-postgres.render.com',
+#         'PORT': '5432',
+#     }
+# }
 
 
 # Password validation

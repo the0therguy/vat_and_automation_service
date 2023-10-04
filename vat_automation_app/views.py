@@ -330,16 +330,17 @@ class TransactionView(APIView):
             transaction.taxable_income = report.taxable_income
             transaction.save()
             return Response(details_data, status=status.HTTP_200_OK)
-        slab_category = PersonalDetails.objects.get(user=user).are_you
-        legal_guardian = PersonalDetails.objects.get(user=user).legal_guardian
+        slab_category = personal_details.are_you
+        legal_guardian = personal_details.legal_guardian
 
         first_slab = Slab.objects.filter(select_one=slab_category).order_by('percentage').first()
         if request.data['category_name'] == 'Salary Private':
-            tax_amount = tax_amount - min((tax_amount * 0.03),
-                                          first_slab.amount + 50000 if legal_guardian else first_slab.amount)
-        report.taxable_income += tax_amount
+            tax_amount = tax_amount - min((tax_amount / 3.00),
+                                          first_slab.amount + Decimal(
+                                              50000.00) if legal_guardian else first_slab.amount)
+        report.taxable_income += Decimal(tax_amount)
         net_tax, income_slab = tax_calculator(personal_details=personal_details,
-                                              amount=report.taxable_income + tax_amount)
+                                              amount=report.taxable_income + Decimal(tax_amount))
         report.income_slab = income_slab
         report.net_tax = net_tax
         report.save()
@@ -364,10 +365,31 @@ class SalaryReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        transaction = Transaction.objects.filter(user=request.user,
-                                                 year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:],
-                                                 category_name='Salary Government')
-        if not transaction:
+        salary_government_transaction = Transaction.objects.get(user=request.user,
+                                                                year=str(datetime.now().year) + '-' + str(
+                                                                    datetime.now().year + 1)[2:],
+                                                                category_name='Salary Government')
+        basic_info = {'Name of the Assess': salary_government_transaction.assess_name,
+                      'TIN': salary_government_transaction.tin,
+                      'government_taxable_income': salary_government_transaction.taxable_income}
+        if not salary_government_transaction:
             return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
-        serializer = SalaryReportSerializer(transaction)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        government_details = Details.objects.filter(transaction=salary_government_transaction)
+        if not government_details:
+            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
+        government_details_serializer = DetailsSerializer(government_details, many=True)
+        salary_private_transaction = Transaction.objects.get(user=request.user,
+                                                             year=str(datetime.now().year) + '-' + str(
+                                                                 datetime.now().year + 1)[2:],
+                                                             category_name='Salary Private')
+        if not salary_private_transaction:
+            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
+        basic_info['private_taxable_income'] = salary_private_transaction.taxable_income
+        private_details = Details.objects.filter(transaction=salary_private_transaction)
+        if not private_details:
+            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
+
+        private_details_serializer = DetailsSerializer(private_details, many=True)
+        return Response(
+            {'government_details': government_details_serializer.data,
+             'private_details': private_details_serializer.data, 'basic_info': basic_info}, status=status.HTTP_200_OK)

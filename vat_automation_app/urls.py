@@ -26,5 +26,6 @@ urlpatterns = [
     path('api/v1/personal-details/', PersonalDetailsView.as_view(), name='personal-details'),
     path('api/v1/transaction/', TransactionView.as_view(), name='transaction-view'),
     path('api/v1/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
+    path('api/v1/salary-report/', SalaryReportView.as_view(), name='salary-report'),
     path('api/v1/test/<int:amount>/', TestingView.as_view())
 ]
