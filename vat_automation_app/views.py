@@ -34,7 +34,7 @@ class CategorySetupCreateView(APIView):
 
 
 class CategorySetupListView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, category_name):
         category_setup = CategorySetup.objects.filter(category_name=category_name, active=True).order_by('sequence')
@@ -287,6 +287,9 @@ class TransactionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
         transaction = Transaction.objects.filter(user=request.user)
         serializer = TransactionSerializer(transaction, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -294,6 +297,8 @@ class TransactionView(APIView):
     def post(self, request):
         details = request.data.pop('details', None)
         personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
         request.data['user'] = request.user.id
         request.data['year'] = str(datetime.now().year) + '-' + str(
             datetime.now().year + 1)[2:]
@@ -365,6 +370,9 @@ class SalaryReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
         salary_government_transaction = Transaction.objects.get(user=request.user,
                                                                 year=str(datetime.now().year) + '-' + str(
                                                                     datetime.now().year + 1)[2:],
@@ -393,3 +401,25 @@ class SalaryReportView(APIView):
         return Response(
             {'government_details': government_details_serializer.data,
              'private_details': private_details_serializer.data, 'basic_info': basic_info}, status=status.HTTP_200_OK)
+
+
+class AssetAndLiabilityReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        assess_year = str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:]
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("Please fill personal details", status=status.HTTP_400_BAD_REQUEST)
+        tin = personal_details.tin
+        input_data = []
+        for data in request.data:
+            data['user'] = request.user.id
+            data['assessment_year'] = assess_year
+            data['tin'] = tin
+            input_data.append(data)
+        input_data_serializer = AssetAndLiabilitySerializer(data=input_data, many=True)
+        if not input_data_serializer.is_valid():
+            return Response(input_data_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        input_data_serializer.save()
+        return Response(input_data_serializer.data,status=status.HTTP_200_OK)

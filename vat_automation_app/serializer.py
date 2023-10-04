@@ -121,7 +121,6 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class DetailsSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Details
         fields = '__all__'
@@ -130,4 +129,10 @@ class DetailsSerializer(serializers.ModelSerializer):
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
+        fields = '__all__'
+
+
+class AssetAndLiabilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetsAndLiabilities
         fields = '__all__'
