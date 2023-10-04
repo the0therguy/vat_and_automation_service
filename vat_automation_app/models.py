@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 
 from django.utils.translation import gettext_lazy as _
+from datetime import datetime
 
 
 # Create your models here.
@@ -68,6 +69,7 @@ NATURE_CHOICE = [
 class Transaction(models.Model):
     uuid = models.CharField(max_length=50, null=True, blank=True)
     year = models.CharField(max_length=50, null=True, blank=True)
+    assess_name = models.CharField(max_length=220)
     category_name = models.CharField(max_length=220, null=True, blank=True)
     nature = models.CharField(max_length=220, choices=NATURE_CHOICE, null=True, blank=True)
     address = models.TextField(null=True, blank=True)
@@ -157,6 +159,20 @@ class PersonalDetails(models.Model):
     legal_guardian = models.BooleanField(default=False)
 
     user = models.OneToOneField(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return self.user.email
+
+
+class AssetsAndLiabilities(models.Model):
+    assets_and_liabilities_type = models.CharField(max_length=220)
+    year = models.IntegerField(default=datetime.now().year)
+    description = models.TextField()
+    value = models.CharField(max_length=220)
+    tin = models.CharField(max_length=50)
+    assessment_year = models.CharField(max_length=50, null=True, blank=True)
+
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return self.user.email
