@@ -155,15 +155,15 @@ class OTPVerificationView(generics.CreateAPIView):
 
     def post(self, request, *args, **kwargs):
         otp_token = request.data.get('otp_token')
-        id = kwargs.get('id')  # Assuming you pass the user ID as a URL parameter
+        username = kwargs.get('username')  # Assuming you pass the user ID as a URL parameter
 
         try:
-            otp = OTP.objects.get(user__id=id, token=otp_token, expire_time__gte=datetime.now())
+            otp = OTP.objects.get(user__username=username, token=otp_token, expire_time__gte=datetime.now())
         except OTP.DoesNotExist:
             return Response({"message": "Invalid OTP or OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
 
         # If OTP is valid, activate the user or perform any other required action
-        user = CustomUser.objects.get(id=id)
+        user = CustomUser.objects.get(username=username)
         user.is_active = True
         user.email_verified = True
         user.save()
