@@ -424,3 +424,94 @@ class AssetAndLiabilityReportView(APIView):
             return Response(input_data_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         input_data_serializer.save()
         return Response(input_data_serializer.data, status=status.HTTP_200_OK)
+
+
+class ReturnView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_transaction(self, category_name, user, year):
+        try:
+            return Transaction.objects.get(category_name=category_name, user=user, year=year)
+        except Transaction.DoesNotExist:
+            return None
+
+    def get_report(self, user):
+        try:
+            return Report.objects.get(user=user)
+        except Report.DoesNotExist:
+            return None
+
+    def get(self, request):
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+        return_details = {}
+        assesment_year = str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:]
+        return_details['Name of the Assessee'] = personal_details.assess_name
+        return_details['TIN'] = personal_details.tin
+        return_details['nid'] = personal_details.nid
+        return_details['passport'] = personal_details.passport_number
+        return_details['Assessment Year'] = assesment_year
+        return_details['Circle'] = personal_details.circle
+        return_details['Tax Zone'] = personal_details.tax_zone
+        return_details['Resident Status'] = personal_details.resident_status
+        return_details['tick_box'] = personal_details.are_you
+        return_details['address'] = personal_details.address
+        return_details['date_of_birth'] = personal_details.date_of_birth
+        return_details['telephone'] = request.user.phone_number
+        return_details['email'] = request.user.email
+        return_details['year_ended_on'] = personal_details.income_year_ended_on
+        salary_government = self.get_transaction(user=request.user, category_name='Salary Government',
+                                                 year=assesment_year)
+        salary = Decimal(0)
+        if salary_government:
+            salary += salary_government.taxable_income
+
+        salary_private = self.get_transaction(user=request.user, category_name='Salary Private', year=assesment_year)
+        if salary_private:
+            salary += salary_private.taxable_income
+
+        return_details['Income from Salaries (annex Schedule 1)'] = salary
+        rent = self.get_transaction(user=request.user, category_name='House Income',
+                                    year=assesment_year)
+        if rent:
+            return_details['Income from Rent (annex Schedule 2)'] = rent.taxable_income
+        else:
+            return_details['Income from Rent (annex Schedule 2)'] = Decimal(0)
+        agriculture = self.get_transaction(user=request.user, category_name='Agriculture', year=assesment_year)
+        if agriculture:
+            return_details['Agricultural income (annex Schedule 3)'] = agriculture.taxable_income
+        else:
+            return_details['Agricultural income (annex Schedule 3)'] = Decimal(0)
+        business = self.get_transaction(user=request.user, category_name='Business', year=assesment_year)
+        if business:
+            return_details['Income from business (annex Schedule 4)'] = business.taxable_income
+        else:
+            return_details['Income from business (annex Schedule 4)'] = Decimal(0)
+
+        return_details['Capital gains'] = 0
+        return_details['Income from Financial Assets (Bank interest/profit, Dividend, Securities etc.)'] = 0
+        return_details['Income from other sources (Royalty, License fee, Honorarium, Fees, Govt. Incentive etc.)'] = 0
+        return_details['Share of income from firm or AOP'] = 0
+        return_details['Income of minor or spouse under section (if not assessee)'] = 0
+        return_details['Foreign income'] = 0
+        report = self.get_report(user=request.user)
+        if not report:
+            return Response('Please fill report first', status=status.HTTP_400_BAD_REQUEST)
+        return_details['Gross tax on taxable Income '] = report.taxable_income
+        return_details['Tax rebate (annex Schedule 5)'] = report.rebate
+        return_details['Net tax after tax rebate (12-13)'] = abs(report.taxable_income - report.rebate)
+        if report.net_tax == Decimal(0):
+            minimum_tax = Decimal(0)
+        elif Decimal(1) <= report.net_tax <= Decimal(5000):
+            minimum_tax = Decimal(5000)
+        else:
+            minimum_tax = report.net_tax
+        return_details['Minimum tax '] = minimum_tax
+        return_details['Tax Payable (Higher of 14 and 15)'] = max(minimum_tax,
+                                                                  abs(report.taxable_income - report.rebate))
+        return_details['Net wealth surcharge (if applicable)'] = 0
+        return_details['Environmental surcharge (if applicable)'] = 0
+        return_details['Delay Interest, Penalty or any other amount under the Income Tax Act (if any)'] = 0
+
+        return Response(return_details, status=status.HTTP_200_OK)
