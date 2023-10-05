@@ -20,11 +20,14 @@ urlpatterns = [
     path('api/v1/slab-list/', SlabListView.as_view(), name='slab-list'),
     path('api/v1/slab-retrieve/<int:slab_id>/', SlabRetrieveView.as_view(), name='slab-retrieve'),
     path('api/v1/signup/', CustomUserCreateView.as_view(), name='signup'),
-    path('api/v1/verify-otp/<int:id>/', OTPVerificationView.as_view(), name='otp_verification_view'),
+    path('api/v1/verify-otp/<str:username>/', OTPVerificationView.as_view(), name='otp_verification_view'),
     path('api/v1/resend-otp/<int:id>/', OTPResendView.as_view(), name='resend_otp'),
     path('api/v1/change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('api/v1/personal-details/', PersonalDetailsView.as_view(), name='personal-details'),
     path('api/v1/transaction/', TransactionView.as_view(), name='transaction-view'),
     path('api/v1/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
+    path('api/v1/salary-report/', SalaryReportView.as_view(), name='salary-report'),
+    path('api/v1/asset-and-liability/', AssetAndLiabilityReportView.as_view()),
+    path('api/v1/return/', ReturnView.as_view(), name='return-view'),
     path('api/v1/test/<int:amount>/', TestingView.as_view())
 ]

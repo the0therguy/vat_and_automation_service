@@ -175,4 +175,4 @@ class AssetsAndLiabilities(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return self.user.email
+        return self.assets_and_liabilities_type + " " + self.tin

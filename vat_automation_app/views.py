@@ -15,6 +15,7 @@ import string
 from django.core.mail import send_mail
 from decimal import Decimal
 from .script import *
+from django.conf import settings
 
 
 # Create your views here.
@@ -34,7 +35,7 @@ class CategorySetupCreateView(APIView):
 
 
 class CategorySetupListView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, category_name):
         category_setup = CategorySetup.objects.filter(category_name=category_name, active=True).order_by('sequence')
@@ -155,15 +156,15 @@ class OTPVerificationView(generics.CreateAPIView):
 
     def post(self, request, *args, **kwargs):
         otp_token = request.data.get('otp_token')
-        id = kwargs.get('id')  # Assuming you pass the user ID as a URL parameter
+        username = kwargs.get('username')  # Assuming you pass the user ID as a URL parameter
 
         try:
-            otp = OTP.objects.get(user__id=id, token=otp_token, expire_time__gte=datetime.now())
+            otp = OTP.objects.get(user__username=username, token=otp_token, expire_time__gte=datetime.now())
         except OTP.DoesNotExist:
             return Response({"message": "Invalid OTP or OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
 
         # If OTP is valid, activate the user or perform any other required action
-        user = CustomUser.objects.get(id=id)
+        user = CustomUser.objects.get(username=username)
         user.is_active = True
         user.email_verified = True
         user.save()
@@ -214,7 +215,7 @@ class OTPResendView(generics.CreateAPIView):
             'uid': urlsafe_base64_encode(force_bytes(user.pk)),
         })
         to_email = user.email
-        send_mail(mail_subject, message, 'your_email@example.com', [to_email])
+        send_mail(mail_subject, message, settings.EMAIL_HOST_USER, [to_email])
 
 
 class ChangePasswordView(APIView):
@@ -287,6 +288,9 @@ class TransactionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
         transaction = Transaction.objects.filter(user=request.user)
         serializer = TransactionSerializer(transaction, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -294,6 +298,8 @@ class TransactionView(APIView):
     def post(self, request):
         details = request.data.pop('details', None)
         personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
         request.data['user'] = request.user.id
         request.data['year'] = str(datetime.now().year) + '-' + str(
             datetime.now().year + 1)[2:]
@@ -330,16 +336,17 @@ class TransactionView(APIView):
             transaction.taxable_income = report.taxable_income
             transaction.save()
             return Response(details_data, status=status.HTTP_200_OK)
-        slab_category = PersonalDetails.objects.get(user=user).are_you
-        legal_guardian = PersonalDetails.objects.get(user=user).legal_guardian
+        slab_category = personal_details.are_you
+        legal_guardian = personal_details.legal_guardian
 
         first_slab = Slab.objects.filter(select_one=slab_category).order_by('percentage').first()
         if request.data['category_name'] == 'Salary Private':
-            tax_amount = tax_amount - min((tax_amount * 0.03),
-                                          first_slab.amount + 50000 if legal_guardian else first_slab.amount)
-        report.taxable_income += tax_amount
+            tax_amount = tax_amount - min((tax_amount / 3.00),
+                                          first_slab.amount + Decimal(
+                                              50000.00) if legal_guardian else first_slab.amount)
+        report.taxable_income += Decimal(tax_amount)
         net_tax, income_slab = tax_calculator(personal_details=personal_details,
-                                              amount=report.taxable_income + tax_amount)
+                                              amount=report.taxable_income + Decimal(tax_amount))
         report.income_slab = income_slab
         report.net_tax = net_tax
         report.save()
@@ -364,10 +371,147 @@ class SalaryReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        transaction = Transaction.objects.filter(user=request.user,
-                                                 year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:],
-                                                 category_name='Salary Government')
-        if not transaction:
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+        salary_government_transaction = Transaction.objects.get(user=request.user,
+                                                                year=str(datetime.now().year) + '-' + str(
+                                                                    datetime.now().year + 1)[2:],
+                                                                category_name='Salary Government')
+        basic_info = {'Name of the Assess': salary_government_transaction.assess_name,
+                      'TIN': salary_government_transaction.tin,
+                      'government_taxable_income': salary_government_transaction.taxable_income}
+        if not salary_government_transaction:
             return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
-        serializer = SalaryReportSerializer(transaction)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        government_details = Details.objects.filter(transaction=salary_government_transaction)
+        if not government_details:
+            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
+        government_details_serializer = DetailsSerializer(government_details, many=True)
+        salary_private_transaction = Transaction.objects.get(user=request.user,
+                                                             year=str(datetime.now().year) + '-' + str(
+                                                                 datetime.now().year + 1)[2:],
+                                                             category_name='Salary Private')
+        if not salary_private_transaction:
+            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
+        basic_info['private_taxable_income'] = salary_private_transaction.taxable_income
+        private_details = Details.objects.filter(transaction=salary_private_transaction)
+        if not private_details:
+            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
+
+        private_details_serializer = DetailsSerializer(private_details, many=True)
+        return Response(
+            {'government_details': government_details_serializer.data,
+             'private_details': private_details_serializer.data, 'basic_info': basic_info}, status=status.HTTP_200_OK)
+
+
+class AssetAndLiabilityReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        assess_year = str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:]
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("Please fill personal details", status=status.HTTP_400_BAD_REQUEST)
+        tin = personal_details.tin
+        input_data = []
+        for data in request.data:
+            data['user'] = request.user.id
+            data['assessment_year'] = assess_year
+            data['tin'] = tin
+            input_data.append(data)
+        input_data_serializer = AssetAndLiabilitySerializer(data=input_data, many=True)
+        if not input_data_serializer.is_valid():
+            return Response(input_data_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        input_data_serializer.save()
+        return Response(input_data_serializer.data, status=status.HTTP_200_OK)
+
+
+class ReturnView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_transaction(self, category_name, user, year):
+        try:
+            return Transaction.objects.get(category_name=category_name, user=user, year=year)
+        except Transaction.DoesNotExist:
+            return None
+
+    def get_report(self, user):
+        try:
+            return Report.objects.get(user=user)
+        except Report.DoesNotExist:
+            return None
+
+    def get(self, request):
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+        return_details = {}
+        assesment_year = str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:]
+        return_details['Name of the Assessee'] = personal_details.assess_name
+        return_details['TIN'] = personal_details.tin
+        return_details['nid'] = personal_details.nid
+        return_details['passport'] = personal_details.passport_number
+        return_details['Assessment Year'] = assesment_year
+        return_details['Circle'] = personal_details.circle
+        return_details['Tax Zone'] = personal_details.tax_zone
+        return_details['Resident Status'] = personal_details.resident_status
+        return_details['tick_box'] = personal_details.are_you
+        return_details['address'] = personal_details.address
+        return_details['date_of_birth'] = personal_details.date_of_birth
+        return_details['telephone'] = request.user.phone_number
+        return_details['email'] = request.user.email
+        return_details['year_ended_on'] = personal_details.income_year_ended_on
+        salary_government = self.get_transaction(user=request.user, category_name='Salary Government',
+                                                 year=assesment_year)
+        salary = Decimal(0)
+        if salary_government:
+            salary += salary_government.taxable_income
+
+        salary_private = self.get_transaction(user=request.user, category_name='Salary Private', year=assesment_year)
+        if salary_private:
+            salary += salary_private.taxable_income
+
+        return_details['Income from Salaries (annex Schedule 1)'] = salary
+        rent = self.get_transaction(user=request.user, category_name='House Income',
+                                    year=assesment_year)
+        if rent:
+            return_details['Income from Rent (annex Schedule 2)'] = rent.taxable_income
+        else:
+            return_details['Income from Rent (annex Schedule 2)'] = Decimal(0)
+        agriculture = self.get_transaction(user=request.user, category_name='Agriculture', year=assesment_year)
+        if agriculture:
+            return_details['Agricultural income (annex Schedule 3)'] = agriculture.taxable_income
+        else:
+            return_details['Agricultural income (annex Schedule 3)'] = Decimal(0)
+        business = self.get_transaction(user=request.user, category_name='Business', year=assesment_year)
+        if business:
+            return_details['Income from business (annex Schedule 4)'] = business.taxable_income
+        else:
+            return_details['Income from business (annex Schedule 4)'] = Decimal(0)
+
+        return_details['Capital gains'] = 0
+        return_details['Income from Financial Assets (Bank interest/profit, Dividend, Securities etc.)'] = 0
+        return_details['Income from other sources (Royalty, License fee, Honorarium, Fees, Govt. Incentive etc.)'] = 0
+        return_details['Share of income from firm or AOP'] = 0
+        return_details['Income of minor or spouse under section (if not assessee)'] = 0
+        return_details['Foreign income'] = 0
+        report = self.get_report(user=request.user)
+        if not report:
+            return Response('Please fill report first', status=status.HTTP_400_BAD_REQUEST)
+        return_details['Gross tax on taxable Income '] = report.taxable_income
+        return_details['Tax rebate (annex Schedule 5)'] = report.rebate
+        return_details['Net tax after tax rebate (12-13)'] = abs(report.taxable_income - report.rebate)
+        if report.net_tax == Decimal(0):
+            minimum_tax = Decimal(0)
+        elif Decimal(1) <= report.net_tax <= Decimal(5000):
+            minimum_tax = Decimal(5000)
+        else:
+            minimum_tax = report.net_tax
+        return_details['Minimum tax '] = minimum_tax
+        return_details['Tax Payable (Higher of 14 and 15)'] = max(minimum_tax,
+                                                                  abs(report.taxable_income - report.rebate))
+        return_details['Net wealth surcharge (if applicable)'] = 0
+        return_details['Environmental surcharge (if applicable)'] = 0
+        return_details['Delay Interest, Penalty or any other amount under the Income Tax Act (if any)'] = 0
+
+        return Response(return_details, status=status.HTTP_200_OK)

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import random
 import string
 from django.core.mail import send_mail
+from django.conf import settings
 
 
 class CategorySetupSerializer(serializers.ModelSerializer):
@@ -83,7 +84,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def send_otp_email(self, user, otp):
         subject = 'Your OTP Code'
         message = f'Your OTP code is: {otp}'
-        from_email = 'email'  # Replace with your sender email
+        from_email = settings.EMAIL_HOST_USER  # Replace with your sender email
         recipient_list = [user.email]
 
         send_mail(subject, message, from_email, recipient_list)
@@ -121,7 +122,6 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class DetailsSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Details
         fields = '__all__'
@@ -130,4 +130,10 @@ class DetailsSerializer(serializers.ModelSerializer):
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
+        fields = '__all__'
+
+
+class AssetAndLiabilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetsAndLiabilities
         fields = '__all__'
