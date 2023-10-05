@@ -141,6 +141,16 @@ DATABASES = {
         'PORT': '5433',
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'vat_and_tax_automation',
+#         'USER': 'root',
+#         'PASSWORD': 'root',
+#         'HOST': 'localhost',
+#         'PORT': '3306',
+#     }
+# }
 
 # DATABASES = {
 #     'default': {
