@@ -15,6 +15,7 @@ import string
 from django.core.mail import send_mail
 from decimal import Decimal
 from .script import *
+from django.conf import settings
 
 
 # Create your views here.
@@ -214,7 +215,7 @@ class OTPResendView(generics.CreateAPIView):
             'uid': urlsafe_base64_encode(force_bytes(user.pk)),
         })
         to_email = user.email
-        send_mail(mail_subject, message, 'your_email@example.com', [to_email])
+        send_mail(mail_subject, message, settings.EMAIL_HOST_USER, [to_email])
 
 
 class ChangePasswordView(APIView):
@@ -422,4 +423,4 @@ class AssetAndLiabilityReportView(APIView):
         if not input_data_serializer.is_valid():
             return Response(input_data_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         input_data_serializer.save()
-        return Response(input_data_serializer.data,status=status.HTTP_200_OK)
+        return Response(input_data_serializer.data, status=status.HTTP_200_OK)
