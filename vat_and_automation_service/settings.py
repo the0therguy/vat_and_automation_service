@@ -131,26 +131,26 @@ WSGI_APPLICATION = 'vat_and_automation_service.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'vat_tax_automation',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
-        'PORT': '5433',
-    }
-}
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'vat_and_tax_automation',
-#         'USER': 'root',
-#         'PASSWORD': 'root',
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'vat_tax_automation',
+#         'USER': 'postgres',
+#         'PASSWORD': 'postgres',
 #         'HOST': 'localhost',
-#         'PORT': '3306',
+#         'PORT': '5433',
 #     }
 # }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'vat_and_tax_automation',
+        'USER': 'root',
+        'PASSWORD': 'root',
+        'HOST': 'localhost',
+        'PORT': '3306',
+    }
+}
 
 # DATABASES = {
 #     'default': {
@@ -206,8 +206,8 @@ STATICFILES_DIRS = (
 EMAIL_PORT = 587  # Replace with your email port
 EMAIL_USE_TLS = True  # Set to False if your email server doesn't use TLS
 EMAIL_HOST = 'smtp.gmail.com'  # Replace with your email host for gmail -> 'smtp.gmail.com'
-EMAIL_HOST_USER = 'email'  # Replace with your email username
-EMAIL_HOST_PASSWORD = 'password'  # Replace with your email password
+EMAIL_HOST_USER = 'fejanic.chowdhury@gmail.com'  # Replace with your email username
+EMAIL_HOST_PASSWORD = 'jqwvwhcwmuklogex'  # Replace with your email password
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 # Default primary key field type
