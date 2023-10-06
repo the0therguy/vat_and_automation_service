@@ -472,6 +472,7 @@ class ReturnView(APIView):
             salary += salary_private.taxable_income
 
         return_details['Income from Salaries (annex Schedule 1)'] = salary
+
         rent = self.get_transaction(user=request.user, category_name='House Income',
                                     year=assesment_year)
         if rent:
@@ -499,6 +500,16 @@ class ReturnView(APIView):
         if not report:
             return Response('Please fill report first', status=status.HTTP_400_BAD_REQUEST)
         return_details['Gross tax on taxable Income '] = report.taxable_income
+        if personal_details.resident_status == 'Non-Resident':
+            return_details['Tax rebate (annex Schedule 5)'] = Decimal(0)
+            return_details['Net tax after tax rebate (12-13)'] = 0
+            return_details['Minimum tax'] = 0
+            return_details['Tax Payable (Higher of 14 and 15)'] = 0
+            return_details['Net wealth surcharge (if applicable)'] = 0
+            return_details['Environmental surcharge (if applicable)'] = 0
+            return_details['Delay Interest, Penalty or any other amount under the Income Tax Act (if any)'] = 0
+            return Response(return_details, status=status.HTTP_200_OK)
+
         return_details['Tax rebate (annex Schedule 5)'] = report.rebate
         return_details['Net tax after tax rebate (12-13)'] = abs(report.taxable_income - report.rebate)
         if report.net_tax == Decimal(0):
