@@ -315,7 +315,8 @@ class TransactionView(APIView):
                 return Response(transaction_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             transaction_serializer.save()
         else:
-            transaction_serializer = TransactionSerializer(transaction)
+            transaction_serializer = TransactionSerializer(transaction.first())
+
         report, create = Report.objects.get_or_create(user=request.user, year=request.data['year'])
         details_data = []
         tax_amount = 0
@@ -327,11 +328,11 @@ class TransactionView(APIView):
             if not detail_serializer.is_valid():
                 return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             if not detail['tax_exempted']:
-                tax_amount += detail['amount']
+                tax_amount += float(detail['amount'])  # Convert amount to float
             detail_serializer.save()
             details_data.append(detail_serializer.data)
         if request.data['category_name'] == 'Rebate':
-            rebate = Decimal(min((report.taxable_income * Decimal(0.03)), tax_amount * 0.15, 100000))
+            rebate = min((float(report.taxable_income) * 0.03), float(tax_amount) * 0.15, 100000)  # Convert to float
             report.rebate = rebate
             report.save()
             transaction = Transaction.objects.get(id=transaction_serializer.data.get('id'))
@@ -342,13 +343,15 @@ class TransactionView(APIView):
         legal_guardian = personal_details.legal_guardian
 
         first_slab = Slab.objects.filter(select_one=slab_category).order_by('percentage').first()
+        if not first_slab:
+            return Response("No slab found", status=status.HTTP_400_BAD_REQUEST)
         if request.data['category_name'] == 'Salary Private':
-            tax_amount = tax_amount - min((tax_amount / 3.00),
-                                          first_slab.amount + Decimal(
-                                              50000.00) if legal_guardian else first_slab.amount)
-        report.taxable_income += Decimal(tax_amount)
+            tax_amount = float(tax_amount) - min((float(tax_amount) / 3.00),
+                                                 float(first_slab.amount) + 50000.00 if legal_guardian else float(
+                                                     first_slab.amount))
+        report.taxable_income += float(tax_amount)  # Convert to float
         net_tax, income_slab = tax_calculator(personal_details=personal_details,
-                                              amount=report.taxable_income + Decimal(tax_amount))
+                                              amount=report.taxable_income + float(tax_amount))  # Convert to float
         report.income_slab = income_slab
         report.net_tax = net_tax
         report.save()
