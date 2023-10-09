@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 import random
 import string
 from django.core.mail import send_mail
-from decimal import Decimal
 from .script import *
 from django.conf import settings
 
@@ -468,7 +467,7 @@ class ReturnView(APIView):
         return_details['year_ended_on'] = personal_details.income_year_ended_on
         salary_government = self.get_transaction(user=request.user, category_name='Salary Government',
                                                  year=assesment_year)
-        salary = Decimal(0)
+        salary = float(0)
         if salary_government:
             salary += salary_government.taxable_income
 
@@ -483,17 +482,17 @@ class ReturnView(APIView):
         if rent:
             return_details['Income from Rent (annex Schedule 2)'] = rent.taxable_income
         else:
-            return_details['Income from Rent (annex Schedule 2)'] = Decimal(0)
+            return_details['Income from Rent (annex Schedule 2)'] = float(0)
         agriculture = self.get_transaction(user=request.user, category_name='Agriculture', year=assesment_year)
         if agriculture:
             return_details['Agricultural income (annex Schedule 3)'] = agriculture.taxable_income
         else:
-            return_details['Agricultural income (annex Schedule 3)'] = Decimal(0)
+            return_details['Agricultural income (annex Schedule 3)'] = float(0)
         business = self.get_transaction(user=request.user, category_name='Business', year=assesment_year)
         if business:
             return_details['Income from business (annex Schedule 4)'] = business.taxable_income
         else:
-            return_details['Income from business (annex Schedule 4)'] = Decimal(0)
+            return_details['Income from business (annex Schedule 4)'] = float(0)
 
         return_details['Capital gains'] = 0
         return_details['Income from Financial Assets (Bank interest/profit, Dividend, Securities etc.)'] = 0
@@ -506,7 +505,7 @@ class ReturnView(APIView):
             return Response('Please fill report first', status=status.HTTP_400_BAD_REQUEST)
         return_details['Gross tax on taxable Income '] = report.taxable_income
         if personal_details.resident_status == 'Non-Resident':
-            return_details['Tax rebate (annex Schedule 5)'] = Decimal(0)
+            return_details['Tax rebate (annex Schedule 5)'] = float(0)
             return_details['Net tax after tax rebate (12-13)'] = 0
             return_details['Minimum tax'] = 0
             return_details['Tax Payable (Higher of 14 and 15)'] = 0
@@ -517,10 +516,10 @@ class ReturnView(APIView):
 
         return_details['Tax rebate (annex Schedule 5)'] = report.rebate
         return_details['Net tax after tax rebate (12-13)'] = abs(report.taxable_income - report.rebate)
-        if report.net_tax == Decimal(0):
-            minimum_tax = Decimal(0)
-        elif Decimal(1) <= report.net_tax <= Decimal(5000):
-            minimum_tax = Decimal(5000)
+        if report.net_tax == float(0):
+            minimum_tax = float(0)
+        elif float(1) <= report.net_tax <= float(5000):
+            minimum_tax = float(5000)
         else:
             minimum_tax = report.net_tax
         return_details['Minimum tax '] = minimum_tax

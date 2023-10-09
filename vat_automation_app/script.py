@@ -1,14 +1,13 @@
 from .models import *
-from decimal import Decimal
 
 
 def tax_calculator(amount, personal_details):
     slab_category = personal_details.are_you
     legal_guardian = personal_details.legal_guardian
     slabs = Slab.objects.filter(select_one=slab_category).order_by('percentage')
-    the_amount = Decimal(amount)
-    taxable_income = Decimal(0.0)
-    income_slab = Decimal(0.0)
+    the_amount = float(amount)
+    taxable_income = float(0.0)
+    income_slab = float(0.0)
     for i in range(len(slabs) - 1):
         income_slab = slabs[i].percentage
         if slabs[i].amount is not None:
@@ -20,7 +19,7 @@ def tax_calculator(amount, personal_details):
                     income_slab = slabs[i].percentage
                 else:
                     taxable_income += the_amount * (slabs[i].percentage / 100)
-                    the_amount = Decimal(0.0)
+                    the_amount = float(0.0)
                     income_slab = slabs[i].percentage
                     break
             else:
@@ -30,7 +29,7 @@ def tax_calculator(amount, personal_details):
                     income_slab = slabs[i].percentage
                 else:
                     taxable_income += the_amount * (slabs[i].percentage / 100)
-                    the_amount = Decimal(0.0)
+                    the_amount = float(0.0)
                     income_slab = slabs[i].percentage
                     break
 
