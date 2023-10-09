@@ -318,7 +318,7 @@ class TransactionView(APIView):
 
         report, create = Report.objects.get_or_create(user=request.user, year=request.data['year'])
         details_data = []
-        tax_amount = 0
+        tax_amount = float(0)
         for index, detail in enumerate(details):
             detail['transaction'] = transaction_serializer.data.get('id')
             detail['transaction_row'] = index + 1
@@ -348,6 +348,8 @@ class TransactionView(APIView):
             tax_amount = float(tax_amount) - min((float(tax_amount) / 3.00),
                                                  float(first_slab.amount) + 50000.00 if legal_guardian else float(
                                                      first_slab.amount))
+        if isinstance(report.taxable_income, float):
+            report.taxable_income = Decimal(report.taxable_income)  # Convert to float
         report.taxable_income += Decimal(tax_amount)  # Convert to float
         net_tax, income_slab = tax_calculator(personal_details=personal_details,
                                               amount=report.taxable_income + Decimal(tax_amount))  # Convert to float
