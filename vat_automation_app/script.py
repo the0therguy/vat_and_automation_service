@@ -13,28 +13,28 @@ def tax_calculator(amount, personal_details):
         if slabs[i].amount is not None:
             # if the legal guardian is true, 50,000 amount will be added on the first slab of user's first slab category
             if i == 0 and legal_guardian:
-                if the_amount >= slabs[i].amount + 50000:
-                    taxable_income += (slabs[i].amount + 50000) * (slabs[i].percentage / 100)
+                if the_amount >= float(slabs[i].amount) + 50000.00:
+                    taxable_income += float(slabs[i].amount + 50000) * float(slabs[i].percentage / 100)
                     the_amount -= slabs[i].amount
                     income_slab = slabs[i].percentage
                 else:
-                    taxable_income += the_amount * (slabs[i].percentage / 100)
+                    taxable_income += the_amount * float(slabs[i].percentage / 100)
                     the_amount = float(0.0)
                     income_slab = slabs[i].percentage
                     break
             else:
                 if the_amount >= slabs[i].amount:
-                    taxable_income += slabs[i].amount * (slabs[i].percentage / 100)
+                    taxable_income += slabs[i].amount * float(slabs[i].percentage / 100)
                     the_amount -= slabs[i].amount
                     income_slab = slabs[i].percentage
                 else:
-                    taxable_income += the_amount * (slabs[i].percentage / 100)
+                    taxable_income += the_amount * float(slabs[i].percentage / 100)
                     the_amount = float(0.0)
                     income_slab = slabs[i].percentage
                     break
 
     if the_amount > 0:
-        taxable_income += the_amount * (slabs[len(slabs) - 1].percentage / 100)
+        taxable_income += the_amount * float(slabs[len(slabs) - 1].percentage / 100)
         income_slab = slabs[len(slabs) - 1].percentage
 
     return round(taxable_income, 2), income_slab
