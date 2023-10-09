@@ -297,9 +297,11 @@ class TransactionView(APIView):
 
     def post(self, request):
         details = request.data.pop('details', None)
-        personal_details = PersonalDetails.objects.get(user=request.user)
-        if not personal_details:
+        try:
+            personal_details = PersonalDetails.objects.get(user=request.user)
+        except PersonalDetails.DoesNotExist:
             return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+
         request.data['user'] = request.user.id
         request.data['year'] = str(datetime.now().year) + '-' + str(
             datetime.now().year + 1)[2:]
