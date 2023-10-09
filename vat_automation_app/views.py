@@ -469,7 +469,7 @@ class ReturnView(APIView):
         return_details['year_ended_on'] = personal_details.income_year_ended_on
         salary_government = self.get_transaction(user=request.user, category_name='Salary Government',
                                                  year=assesment_year)
-        salary = float(0)
+        salary = Decimal(0)
         if salary_government:
             salary += salary_government.taxable_income
 
