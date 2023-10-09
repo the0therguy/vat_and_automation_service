@@ -15,7 +15,7 @@ import string
 from django.core.mail import send_mail
 from .script import *
 from django.conf import settings
-
+from decimal import Decimal
 
 # Create your views here.
 class CategorySetupCreateView(APIView):
@@ -348,9 +348,9 @@ class TransactionView(APIView):
             tax_amount = float(tax_amount) - min((float(tax_amount) / 3.00),
                                                  float(first_slab.amount) + 50000.00 if legal_guardian else float(
                                                      first_slab.amount))
-        report.taxable_income += float(tax_amount)  # Convert to float
+        report.taxable_income += Decimal(tax_amount)  # Convert to float
         net_tax, income_slab = tax_calculator(personal_details=personal_details,
-                                              amount=report.taxable_income + float(tax_amount))  # Convert to float
+                                              amount=report.taxable_income + Decimal(tax_amount))  # Convert to float
         report.income_slab = income_slab
         report.net_tax = net_tax
         report.save()
