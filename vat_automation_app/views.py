@@ -352,7 +352,7 @@ class TransactionView(APIView):
             report.taxable_income = Decimal(report.taxable_income)  # Convert to float
         report.taxable_income += Decimal(tax_amount)  # Convert to float
         net_tax, income_slab = tax_calculator(personal_details=personal_details,
-                                              amount=report.taxable_income + Decimal(tax_amount))  # Convert to float
+                                              amount=report.taxable_income)  # Convert to float
         report.income_slab = income_slab
         report.net_tax = net_tax
         report.save()
