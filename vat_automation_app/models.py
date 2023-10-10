@@ -70,6 +70,7 @@ class Transaction(models.Model):
     uuid = models.CharField(max_length=50, null=True, blank=True)
     year = models.CharField(max_length=50, null=True, blank=True)
     assess_name = models.CharField(max_length=220)
+    business_name = models.CharField(max_length=220, null=True, blank=True)
     category_name = models.CharField(max_length=220, null=True, blank=True)
     nature = models.CharField(max_length=220, choices=NATURE_CHOICE, null=True, blank=True)
     address = models.TextField(null=True, blank=True)

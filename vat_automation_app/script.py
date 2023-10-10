@@ -38,7 +38,3 @@ def tax_calculator(amount, personal_details):
         income_slab = slabs[len(slabs) - 1].percentage
 
     return round(taxable_income, 2), income_slab
-
-
-def rebate_handling():
-    pass

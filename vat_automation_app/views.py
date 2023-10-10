@@ -17,6 +17,7 @@ from .script import *
 from django.conf import settings
 from decimal import Decimal
 
+
 # Create your views here.
 class CategorySetupCreateView(APIView):
     permission_classes = [IsAdminUser]
@@ -295,11 +296,11 @@ class TransactionView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        details = request.data.pop('details', None)
         try:
             personal_details = PersonalDetails.objects.get(user=request.user)
         except PersonalDetails.DoesNotExist:
             return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+        details = request.data.pop('details', None)
 
         request.data['user'] = request.user.id
         request.data['year'] = str(datetime.now().year) + '-' + str(
@@ -319,17 +320,35 @@ class TransactionView(APIView):
         report, create = Report.objects.get_or_create(user=request.user, year=request.data['year'])
         details_data = []
         tax_amount = float(0)
-        for index, detail in enumerate(details):
-            detail['transaction'] = transaction_serializer.data.get('id')
-            detail['transaction_row'] = index + 1
+        if request.data['category_name'] == 'Business':
+            for index, detail in enumerate(details):
+                detail_serializer = DetailsSerializer(data={
+                    'transaction': transaction_serializer.data.get('id'),
+                    'transaction_row': index + 1,
+                    'description': detail,
+                    'amount': details[detail],
+                    'tax_exempted': True,
+                    'comment': "",
+                    'aggregated': "",
+                })
+                if not detail_serializer.is_valid():
+                    return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                detail_serializer.save()
+                details_data.append(detail_serializer.data)
 
-            detail_serializer = DetailsSerializer(data=detail)
-            if not detail_serializer.is_valid():
-                return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            if not detail['tax_exempted']:
-                tax_amount += float(detail['amount'])  # Convert amount to float
-            detail_serializer.save()
-            details_data.append(detail_serializer.data)
+            tax_amount = details['net_profit']
+        else:
+            for index, detail in enumerate(details):
+                detail['transaction'] = transaction_serializer.data.get('id')
+                detail['transaction_row'] = index + 1
+
+                detail_serializer = DetailsSerializer(data=detail)
+                if not detail_serializer.is_valid():
+                    return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                if not detail['tax_exempted']:
+                    tax_amount += float(detail['amount'])  # Convert amount to float
+                detail_serializer.save()
+                details_data.append(detail_serializer.data)
         if request.data['category_name'] == 'Rebate':
             rebate = min((float(report.taxable_income) * 0.03), float(tax_amount) * 0.15, 100000)  # Convert to float
             report.rebate = rebate
