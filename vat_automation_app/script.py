@@ -38,3 +38,13 @@ def tax_calculator(amount, personal_details):
         income_slab = slabs[len(slabs) - 1].percentage
 
     return round(taxable_income, 2), income_slab
+
+
+def category_data(category_name):
+    category = CategorySetup.objects.filter(category_name=category_name)
+    details = []
+    for c in category:
+        details.append({'id': c.id, 'description': c.description, 'amount': 0, 'aggregated': c.aggregated,
+                        'tax_exempted': c.tax_exempted, 'comment': ""})
+
+    return details

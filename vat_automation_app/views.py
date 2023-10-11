@@ -395,38 +395,48 @@ class TestingView(APIView):
 class SalaryReportView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_transaction(self, user, year, category_name):
+        try:
+            return Transaction.objects.get(user=user, year=year, category_name=category_name)
+        except Transaction.DoesNotExist:
+            return None
+
     def get(self, request):
         personal_details = PersonalDetails.objects.get(user=request.user)
         if not personal_details:
             return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
-        salary_government_transaction = Transaction.objects.get(user=request.user,
-                                                                year=str(datetime.now().year) + '-' + str(
-                                                                    datetime.now().year + 1)[2:],
-                                                                category_name='Salary Government')
-        basic_info = {'Name of the Assess': salary_government_transaction.assess_name,
-                      'TIN': salary_government_transaction.tin,
-                      'government_taxable_income': salary_government_transaction.taxable_income}
-        if not salary_government_transaction:
-            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
-        government_details = Details.objects.filter(transaction=salary_government_transaction)
-        if not government_details:
-            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
-        government_details_serializer = DetailsSerializer(government_details, many=True)
-        salary_private_transaction = Transaction.objects.get(user=request.user,
+        basic_info = {'Name of the Assess': personal_details.assess_name, 'TIN': personal_details.tin}
+        salary_government_transaction = self.get_transaction(user=request.user,
                                                              year=str(datetime.now().year) + '-' + str(
                                                                  datetime.now().year + 1)[2:],
-                                                             category_name='Salary Private')
-        if not salary_private_transaction:
-            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
-        basic_info['private_taxable_income'] = salary_private_transaction.taxable_income
-        private_details = Details.objects.filter(transaction=salary_private_transaction)
-        if not private_details:
-            return Response("No salary report found", status=status.HTTP_404_NOT_FOUND)
+                                                             category_name='Salary Government')
+        if not salary_government_transaction:
+            salary_government_serializer = category_data(category_name='Salary Government')
+            basic_info['government_taxable_income'] = 0.0
+        else:
+            basic_info['government_taxable_income'] = salary_government_transaction.taxable_income
+            government_details = Details.objects.filter(transaction=salary_government_transaction)
+            if not government_details:
+                salary_government_serializer = category_data(category_name='Salary Government')
+            else:
+                salary_government_serializer = DetailsSerializer(government_details, many=True).data
 
-        private_details_serializer = DetailsSerializer(private_details, many=True)
+        salary_private_transaction = self.get_transaction(user=request.user, year=str(datetime.now().year) + '-' + str(
+            datetime.now().year + 1)[2:], category_name='Salary Private')
+        if not salary_private_transaction:
+            salary_private_serializer = category_data(category_name='Salary Private')
+            basic_info['private_taxable_income'] = 0.0
+        else:
+            basic_info['private_taxable_income'] = salary_private_transaction.taxable_income
+            private_details = Details.objects.filter(transaction=salary_private_transaction)
+            if not private_details:
+                salary_private_serializer = category_data(category_name='Salary Private')
+            else:
+                salary_private_serializer = DetailsSerializer(private_details, many=True).data
+
         return Response(
-            {'government_details': government_details_serializer.data,
-             'private_details': private_details_serializer.data, 'basic_info': basic_info}, status=status.HTTP_200_OK)
+            {'government_details': salary_government_serializer,
+             'private_details': salary_private_serializer, 'basic_info': basic_info}, status=status.HTTP_200_OK)
 
 
 class AssetAndLiabilityReportView(APIView):
