@@ -162,7 +162,7 @@ class PersonalDetails(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return self.user.email
+        return self.assess_name
 
 
 class AssetsAndLiabilities(models.Model):
