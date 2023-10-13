@@ -16,6 +16,10 @@ from django.core.mail import send_mail
 from .script import *
 from django.conf import settings
 from decimal import Decimal
+from django.contrib.sites.shortcuts import get_current_site
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
 
 
 # Create your views here.
@@ -206,14 +210,8 @@ class OTPResendView(generics.CreateAPIView):
         OTP.objects.create(token=otp, expire_time=otp_expiry, user=user)
 
     def send_otp_email(self, user, otp):
-        current_site = get_current_site(self.request)
         mail_subject = 'Your New OTP'
-        message = render_to_string('otp_email_template.html', {
-            'user': user,
-            'otp': otp,
-            'domain': current_site.domain,
-            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-        })
+        message = f'Your OTP code is: {otp}'
         to_email = user.email
         send_mail(mail_subject, message, settings.EMAIL_HOST_USER, [to_email])
 
