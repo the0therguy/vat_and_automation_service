@@ -482,20 +482,20 @@ class ReturnView(APIView):
             return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
         basic_info = {}
         assesment_year = str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:]
-        basic_info['Name_of_the_Assessee'] = personal_details.assess_name
+        basic_info['Name of the Taxpayer'] = personal_details.assess_name
         basic_info['TIN'] = personal_details.tin
-        basic_info['nid'] = personal_details.nid
-        basic_info['passport'] = personal_details.passport_number
-        basic_info['Assessment_Year'] = assesment_year
+        basic_info['National ID No.'] = personal_details.nid
+        basic_info['Passport No.'] = personal_details.passport_number
+        basic_info['Assessment Year'] = assesment_year
         basic_info['Circle'] = personal_details.circle
-        basic_info['Tax_Zone'] = personal_details.tax_zone
-        basic_info['Resident_Status'] = personal_details.resident_status
-        basic_info['tick_box'] = personal_details.are_you
-        basic_info['address'] = personal_details.address
-        basic_info['date_of_birth'] = personal_details.date_of_birth
-        basic_info['telephone'] = request.user.phone_number
-        basic_info['email'] = request.user.email
-        basic_info['year_ended_on'] = personal_details.income_year_ended_on
+        basic_info['Tax Zone'] = personal_details.tax_zone
+        basic_info['Resident Status'] = personal_details.resident_status
+        basic_info['tick box'] = personal_details.are_you
+        basic_info['Address'] = personal_details.address
+        basic_info['Date of Birth'] = personal_details.date_of_birth
+        basic_info['Mobile'] = request.user.phone_number
+        basic_info['e-mail'] = request.user.email
+        basic_info['Year Ended On'] = personal_details.income_year_ended_on
         salary_government = self.get_transaction(user=request.user, category_name='Salary Government',
                                                  year=assesment_year)
         particulars_of_income = {}
@@ -507,74 +507,74 @@ class ReturnView(APIView):
         if salary_private:
             salary += salary_private.taxable_income
 
-        particulars_of_income['Income from Salaries_(annex_Schedule_1)'] = salary
+        particulars_of_income['Income from Employment (annex Schedule 1)'] = salary
 
         rent = self.get_transaction(user=request.user, category_name='House Income',
                                     year=assesment_year)
         if rent:
-            particulars_of_income['Income_from_Rent_(annex_Schedule_2)'] = rent.taxable_income
+            particulars_of_income['Income from Rent (annex Schedule 2)'] = rent.taxable_income
         else:
-            particulars_of_income['Income_from_Rent_(annex_Schedule_2)'] = float(0)
+            particulars_of_income['Income from Rent (annex Schedule 2)'] = float(0)
         agriculture = self.get_transaction(user=request.user, category_name='Agriculture', year=assesment_year)
         if agriculture:
-            particulars_of_income['Agricultural_income_(annex_Schedule_3)'] = agriculture.taxable_income
+            particulars_of_income['Income from Agriculture (annex Schedule 3)'] = agriculture.taxable_income
         else:
-            particulars_of_income['Agricultural_income_(annex_Schedule_3)'] = float(0)
+            particulars_of_income['Income from Agriculture (annex Schedule 3)'] = float(0)
         business = self.get_transaction(user=request.user, category_name='Business', year=assesment_year)
         if business:
-            particulars_of_income['Income_from_business_(annex_Schedule_4)'] = business.taxable_income
+            particulars_of_income['Income from Business (annex Schedule 4)'] = business.taxable_income
         else:
-            particulars_of_income['Income_from_business_(annex_Schedule_4)'] = float(0)
+            particulars_of_income['Income from Business (annex Schedule 4)'] = float(0)
 
-        particulars_of_income['Capital_gains'] = 0
-        particulars_of_income['Income_from_Financial_Assets_(Bank_interest/profit,_Dividend,_Securities etc.)'] = 0
+        particulars_of_income['Income from Capital Gain'] = 0
+        particulars_of_income['Income from Financial Assets (Bank Interest, Dividend, Securities Profit etc)'] = 0
         particulars_of_income[
-            'Income_from_other_sources_(Royalty,_License_fee,_Honorarium,_Fees,_Govt._Incentive_etc.)'] = 0
-        particulars_of_income['Share_of_income_from_firm_or_AOP'] = 0
-        particulars_of_income['Income_of_Minor_or_Spouse_(if_not_Taxpayer)'] = 0
-        particulars_of_income['Taxable_Income_from_Abroad'] = 0
+            'Income from Other Sources (Royalty, License Fees, Honorarium, Govt. Incentive etc.)'] = 0
+        particulars_of_income['Share of Income from Firm or AoP'] = 0
+        particulars_of_income['Income of Minor or Spouse (if not Taxpayer)'] = 0
+        particulars_of_income['Taxable Income from Abroad'] = 0
 
         tax_consumption = {}
         particulars_of_tax_payment = {}
         report = self.get_report(user=request.user)
         if not report:
             return Response('Please fill report first', status=status.HTTP_400_BAD_REQUEST)
-        tax_consumption['Gross_tax_on_taxable_Income '] = report.taxable_income
+        tax_consumption['Gross Tax on Taxable Income'] = report.taxable_income
         if personal_details.resident_status == 'Non-Resident':
-            tax_consumption['Tax_rebate_(annex_Schedule_5)'] = float(0)
-            tax_consumption['Net_tax_after_tax_rebate_(12-13)'] = 0
-            tax_consumption['Minimum_tax'] = 0
-            tax_consumption['Tax_Payable_(Higher_of_14_and_15)'] = 0
-            tax_consumption['Net_wealth_surcharge_(if_applicable)'] = 0
-            tax_consumption['Environmental_surcharge_(if_applicable)'] = 0
-            tax_consumption['Delay_Interest,_Penalty_or_any_other_amount_under_the_Income_Tax_Act_(if_any)'] = 0
-            particulars_of_tax_payment['Tax_Deducted_or_Collected_at_Source_(attach_proof)'] = 0
-            particulars_of_tax_payment['Advance_Tax_paid_(attach_proof)'] = 0
-            particulars_of_tax_payment['Adjustment_of_Tax_Refund_{mention_assessment_year(s)_of_refund} '] = 0
-            particulars_of_tax_payment['Tax_Paid_with_this_Return'] = 0
+            tax_consumption['Tax Rebate (annex Schedule 5)'] = float(0)
+            tax_consumption['Net Tax after Rebate (12  – 13)'] = 0
+            tax_consumption['Minimum Tax'] = 0
+            tax_consumption['Tax Payable (Higher of 14 and 15)'] = 0
+            tax_consumption['(a) Net Wealth Surcharge (if applicable)'] = 0
+            tax_consumption['(b) Environmental Surcharge (if applicable)'] = 0
+            tax_consumption['Delay Interest, Penalty or any other amount Under Income Tax Act (if any)'] = 0
+            particulars_of_tax_payment['Tax Deducted or Collected at Source (attach proof)'] = 0
+            particulars_of_tax_payment['Advance Tax paid (attach proof)'] = 0
+            particulars_of_tax_payment['Adjustment of Tax Refund {mention assessment year(s) of refund}'] = 0
+            particulars_of_tax_payment['Tax Paid with this Return'] = 0
             return Response({'Basic_Info': basic_info, 'Particulars_of_Income': particulars_of_income,
                              'Tax_Consumption': tax_consumption,
                              'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
 
-        tax_consumption['Tax_rebate_(annex_Schedule_5)'] = report.rebate
-        tax_consumption['Net_tax_after_tax_rebate_(12-13)'] = abs(report.taxable_income - report.rebate)
+        tax_consumption['Tax Rebate (annex Schedule 5)'] = report.rebate
+        tax_consumption['Net Tax after Rebate (12  – 13)'] = abs(report.taxable_income - report.rebate)
         if report.net_tax == float(0):
             minimum_tax = float(0)
         elif float(1) <= report.net_tax <= float(5000):
             minimum_tax = float(5000)
         else:
             minimum_tax = report.net_tax
-        tax_consumption['Minimum_tax '] = minimum_tax
-        tax_consumption['Tax_Payable_(Higher_of_14_and_15)'] = max(minimum_tax,
+        tax_consumption['Minimum Tax'] = minimum_tax
+        tax_consumption['Tax Payable (Higher of 14 and 15)'] = max(minimum_tax,
                                                                    abs(report.taxable_income - report.rebate))
-        tax_consumption['Net_wealth_surcharge_(if_applicable)'] = 0
-        tax_consumption['Environmental_surcharge_(if_applicable)'] = 0
-        tax_consumption['Delay_Interest_Penalty_or_any_other_amount_under_the_Income_Tax_Act_(if_any)'] = 0
+        tax_consumption['(a) Net Wealth Surcharge (if applicable)'] = 0
+        tax_consumption['(b) Environmental Surcharge (if applicable)'] = 0
+        tax_consumption['Delay Interest, Penalty or any other amount Under Income Tax Act (if any)'] = 0
 
-        particulars_of_tax_payment['Tax_Deducted_or_Collected_at_Source_(attach_proof)'] = 0
-        particulars_of_tax_payment['Advance_Tax_paid_(attach_proof)'] = 0
-        particulars_of_tax_payment['Adjustment_of_Tax_Refund_{mention_assessment_year(s)_of_refund} '] = 0
-        particulars_of_tax_payment['Tax_Paid_with_this_Return'] = 0
+        particulars_of_tax_payment['Tax Deducted or Collected at Source (attach proof)'] = 0
+        particulars_of_tax_payment['Advance Tax paid (attach proof)'] = 0
+        particulars_of_tax_payment['Adjustment of Tax Refund {mention assessment year(s) of refund}'] = 0
+        particulars_of_tax_payment['Tax Paid with this Return'] = 0
         return Response({'Basic_Info': basic_info, 'Particulars_f_Income': particulars_of_income,
                          'Tax_Consumption': tax_consumption,
                          'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
