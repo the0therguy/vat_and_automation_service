@@ -575,6 +575,6 @@ class ReturnView(APIView):
         particulars_of_tax_payment['Advance_Tax_paid_(attach_proof)'] = 0
         particulars_of_tax_payment['Adjustment_of_Tax_Refund_{mention_assessment_year(s)_of_refund} '] = 0
         particulars_of_tax_payment['Tax_Paid_with_this_Return'] = 0
-        return Response({'Basic Info': basic_info, 'Particulars of Income': particulars_of_income,
-                         'Tax Consumption': tax_consumption,
-                         'Particulars of Tax Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
+        return Response({'Basic_Info': basic_info, 'Particulars_f_Income': particulars_of_income,
+                         'Tax_Consumption': tax_consumption,
+                         'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
