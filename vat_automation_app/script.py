@@ -1,6 +1,7 @@
 from .models import *
 
 
+
 def tax_calculator(amount, personal_details):
     slab_category = personal_details.are_you
     legal_guardian = personal_details.legal_guardian
@@ -15,6 +16,8 @@ def tax_calculator(amount, personal_details):
             if i == 0 and legal_guardian:
                 if the_amount >= float(slabs[i].amount) + 50000.00:
                     taxable_income += float(slabs[i].amount + 50000) * float(slabs[i].percentage / 100)
+                    if isinstance(the_amount, float):
+                        report.taxable_income = Decimal(the_amount)  # Convert to float
                     the_amount -= slabs[i].amount
                     income_slab = slabs[i].percentage
                 else:
