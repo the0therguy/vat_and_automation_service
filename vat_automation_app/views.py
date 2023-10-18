@@ -259,6 +259,14 @@ class PersonalDetailsView(APIView):
     def post(self, request):
         if not request.user.email_verified:
             return Response('Email not verified', status=status.HTTP_400_BAD_REQUEST)
+        personal_details = self.get_object(request.user)
+        if personal_details:
+            serializer = PersonalDetailsUpdateSerializer(personal_details, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         request.data['user'] = request.user.id
         request.data['income_year_ended_on'] = datetime(datetime.now().year, 6, 30).date()
         request.data['assessment_year'] = str(datetime.now().year) + '-' + str(
@@ -266,16 +274,6 @@ class PersonalDetailsView(APIView):
         request.data['email'] = request.user.email
         request.data['phone_number'] = request.user.phone_number
         serializer = PersonalDetailsSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def put(self, request):
-        personal_details = self.get_object(request.user)
-        if not personal_details:
-            return Response("No personal details found", status=status.HTTP_404_NOT_FOUND)
-        serializer = PersonalDetailsUpdateSerializer(personal_details, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
