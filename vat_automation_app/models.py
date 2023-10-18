@@ -73,6 +73,7 @@ class Transaction(models.Model):
     business_name = models.CharField(max_length=220, null=True, blank=True)
     category_name = models.CharField(max_length=220, null=True, blank=True)
     nature = models.CharField(max_length=220, choices=NATURE_CHOICE, null=True, blank=True)
+    type_of_business = models.CharField(max_length=220, null=True, blank=True)
     address = models.TextField(null=True, blank=True)
     tin = models.CharField(max_length=50)
     taxable_income = models.DecimalField(default=0.0, max_digits=10, decimal_places=2)

@@ -613,3 +613,280 @@ class CheckAdmin(APIView):
         if request.user.is_staff or request.user.is_superuser:
             return Response(True, status=status.HTTP_200_OK)
         return Response(False, status=status.HTTP_200_OK)
+
+
+class BusinessReport(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_transaction(self, user, year, category_name):
+        try:
+            return Transaction.objects.get(user=user, year=year, category_name=category_name)
+        except Transaction.DoesNotExist:
+            return None
+
+    def get(self, request):
+        personal_details = PersonalDetails.objects.get(user=request.user)
+        if not personal_details:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+
+        basic_info = {'Name of the Assess': personal_details.assess_name, 'TIN': personal_details.tin}
+        business_transaction = self.get_transaction(user=request.user,
+                                                    year=str(datetime.now().year) + '-' + str(
+                                                        datetime.now().year + 1)[2:],
+                                                    category_name='Business')
+        if not business_transaction:
+            return Response("Please fill out your business form first", status=status.HTTP_400_BAD_REQUEST)
+
+        basic_info['Name_of_the_Taxpayer'] = business_transaction.assess_name
+        basic_info['TIN'] = business_transaction.tin
+        basic_info['Name_of_Business'] = business_transaction.business_name
+        basic_info['Nature_of_business'] = business_transaction.type_of_business
+        basic_info['Business_Address'] = business_transaction.address
+
+        business_details = Details.objects.filter(transaction=business_transaction).order_by('transaction_row')
+
+        summery_of_income = []
+        summary_of_balance_sheet = []
+        if not business_details:
+            summery_of_income.append({'particular': 'Sales / Turnover  / Receipt', 'amount': '-'})
+            summery_of_income.append({'particular': 'Gross Profit', 'amount': '-'})
+            summery_of_income.append(
+                {'particular': 'General, Administrative, Selling and Other Expenses', 'amount': '-'})
+            summery_of_income.append({'particular': 'Bad Debt Expense', 'amount': '-'})
+            summery_of_income.append({'particular': 'Net Profit ( 2 – 3)', 'amount': '-'})
+
+            summary_of_balance_sheet.append({'particular': 'Cash and Bank Balance', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Inventory', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Fixed Asset', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Other Assets', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Total Assets ( 6 + 7 + 8 + 9)', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Opening Capital', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Net Profit', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Drawing during the Income Year', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Closing Capital (11 + 12 – 13)', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Liabilities', 'amount': '-'})
+            summary_of_balance_sheet.append({'particular': 'Total Capital & Liabilities (14 + 15)', 'amount': '-'})
+
+        else:
+            summery_of_income.append({'particular': 'Sales / Turnover  / Receipt',
+                                      'amount': business_details.get(description='revenue').__dict__.get('amount')})
+            summery_of_income.append({'particular': 'Gross Profit',
+                                      'amount': business_details.get(description='gross_profit').__dict__.get(
+                                          'amount')})
+            summery_of_income.append(
+                {'particular': 'General, Administrative, Selling and Other Expenses',
+                 'amount': business_details.get(description='administrative_expenses').__dict__.get(
+                     'amount')})
+            summery_of_income.append({'particular': 'Bad Debt Expense',
+                                      'amount': business_details.get(description='bad_debt_expense').__dict__.get(
+                                          'amount')})
+            summery_of_income.append({'particular': 'Net Profit ( 2 – 3)',
+                                      'amount': business_details.get(description='gross_profit').__dict__.get(
+                                          'amount') - business_details.get(
+                                          description='administrative_expenses').__dict__.get(
+                                          'amount')})
+
+            summary_of_balance_sheet.append({'particular': 'Cash and Bank Balance',
+                                             'amount': business_details.get(description='bank_balance').__dict__.get(
+                                                 'amount') + business_details.get(
+                                                 description='cash_in_hand').__dict__.get(
+                                                 'amount')})
+            summary_of_balance_sheet.append({'particular': 'Inventory', 'amount': business_details.get(
+                description='closing_balance_inventory').__dict__.get(
+                'amount')})
+            summary_of_balance_sheet.append({'particular': 'Fixed Asset', 'amount': business_details.get(
+                description='property_plant_equipment').__dict__.get(
+                'amount')})
+
+            summary_of_balance_sheet.append({'particular': 'Other Assets',
+                                             'amount': business_details.get(description='loan_to_others').__dict__.get(
+                                                 'amount') + business_details.get(
+                                                 description='advances_deposits_receivable').__dict__.get('amount')})
+            summary_of_balance_sheet.append({'particular': 'Total Assets ( 6 + 7 + 8 + 9)',
+                                             'amount': business_details.get(description='bank_balance').__dict__.get(
+                                                 'amount') + business_details.get(
+                                                 description='cash_in_hand').__dict__.get(
+                                                 'amount') + business_details.get(
+                                                 description='closing_balance_inventory').__dict__.get(
+                                                 'amount') + business_details.get(
+                                                 description='property_plant_equipment').__dict__.get(
+                                                 'amount') + business_details.get(
+                                                 description='loan_to_others').__dict__.get(
+                                                 'amount') + business_details.get(
+                                                 description='advances_deposits_receivable').__dict__.get('amount')})
+
+            summary_of_balance_sheet.append({'particular': 'Opening Capital',
+                                             'amount': business_details.get(
+                                                 description='opening_balance_capital').__dict__.get(
+                                                 'amount')})
+            summary_of_balance_sheet.append(
+                {'particular': 'Net Profit', 'amount': business_details.get(description='net_profit').__dict__.get(
+                    'amount')})
+            summary_of_balance_sheet.append({'particular': 'Drawing during the Income Year',
+                                             'amount': business_details.get(description=
+                                                                            'drawing_during_the_income_year').__dict__.get(
+                                                 'amount')})
+            closing_capital = business_details.get(description='opening_balance_capital').__dict__.get(
+                'amount') + business_details.get(
+                description='opening_balance_capital').__dict__.get(
+                'amount') - business_details.get(
+                description='drawing_during_the_income_year').__dict__.get('amount')
+            summary_of_balance_sheet.append({'particular': 'Closing Capital (11 + 12 – 13)',
+                                             'amount': closing_capital})
+            summary_of_balance_sheet.append({'particular': 'Liabilities', 'amount': business_details.get(
+                description='liabilities').__dict__.get('amount')})
+            summary_of_balance_sheet.append({'particular': 'Total Capital & Liabilities (14 + 15)',
+                                             'amount': closing_capital + business_details.get(
+                                                 description='liabilities').__dict__.get('amount')})
+
+        rebate_transaction = self.get_transaction(user=request.user,
+                                                  year=str(datetime.now().year) + '-' + str(
+                                                      datetime.now().year + 1)[2:],
+                                                  category_name='Rebate')
+        particulars_of_income = []
+        if not rebate_transaction:
+            particulars_of_income.append(
+                {'particular': 'Life insurance premium or Contractual "Deferred Annuity" paid in Bangladesh',
+                 'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Contribution to deposit pension/Monthly Saving scheme (not exceeding allowable limit)',
+                 'amount': '-'})
+            particulars_of_income.append({
+                'particular': 'Investment in Govt. securities, Unit certificate, Mutual fund, ETF or Joint investment scheme Unit certificate',
+                'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Investment in securities listed with approved Stock Exchange', 'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Contribution to provident fund to which Provident Fund  Act, 1925 applies',
+                 'amount': '-'})
+            particulars_of_income.append({'particular': 'Contribution to approved Pension Fund', 'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Contribution to Benevolent Fund and Group Insurance Premium', 'amount': '-'})
+            particulars_of_income.append({'particular': 'Contribution to Zakat Fund', 'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Others, if any (Show the name of the investment from rebate page)', 'amount': '-'})
+            particulars_of_income.append({'particular': 'Total investment (aggregate of 1 to 10)', 'amount': '-'})
+            try:
+                report = Report.objects.get(user=request.user,
+                                            year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:])
+            except Report.DoesNotExist:
+                return Response("please fill out your rebate form", status=status.HTTP_400_BAD_REQUEST)
+
+            particulars_of_income.append(
+                {'particular': 'Amount of Tax Rebate', 'amount': min(report.taxable_income, 0, 1000000)})
+            return Response({'basic_info': basic_info, 'summary_of_income': summery_of_income,
+                             'summary_of_balance_sheet': summary_of_balance_sheet,
+                             'particulars_of_income': particulars_of_income}, status=status.HTTP_200_OK)
+        rebate_details = Details.objects.filter(transaction=rebate_transaction).order_by('transaction_row')
+
+        if not rebate_details:
+            particulars_of_income.append(
+                {'particular': 'Life insurance premium or Contractual "Deferred Annuity" paid in Bangladesh',
+                 'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Contribution to deposit pension/Monthly Saving scheme (not exceeding allowable limit)',
+                 'amount': '-'})
+            particulars_of_income.append({
+                'particular': 'Investment in Govt. securities, Unit certificate, Mutual fund, ETF or Joint investment scheme Unit certificate',
+                'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Investment in securities listed with approved Stock Exchange', 'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Contribution to provident fund to which Provident Fund  Act, 1925 applies',
+                 'amount': '-'})
+            particulars_of_income.append({'particular': 'Contribution to approved Pension Fund', 'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Contribution to Benevolent Fund and Group Insurance Premium', 'amount': '-'})
+            particulars_of_income.append({'particular': 'Contribution to Zakat Fund', 'amount': '-'})
+            particulars_of_income.append(
+                {'particular': 'Others, if any (Show the name of the investment from rebate page)', 'amount': '-'})
+            particulars_of_income.append({'particular': 'Total investment (aggregate of 1 to 10)', 'amount': '-'})
+            try:
+                report = Report.objects.get(user=request.user,
+                                            year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:])
+            except Report.DoesNotExist:
+                return Response("please fill out your rebate form", status=status.HTTP_400_BAD_REQUEST)
+
+            particulars_of_income.append(
+                {'particular': 'Amount of Tax Rebate', 'amount': min(report.taxable_income, 0, 1000000)})
+            return Response({'basic_info': basic_info, 'summary_of_income': summery_of_income,
+                             'summary_of_balance_sheet': summary_of_balance_sheet,
+                             'particulars_of_income': particulars_of_income}, status=status.HTTP_200_OK)
+
+        particulars_of_income.append({
+            'particular': 'Life insurance premium or Contractual "Deferred Annuity" paid in Bangladesh (10% of Policy Value)',
+            'amount': rebate_details.get(
+                description='Life insurance premium or Contractual Deferred Annuity paid in Bangladesh (10% of Policy Value').__dict__.get(
+                'amount')})
+        particulars_of_income.append(
+            {'particular': 'Contribution to deposit pension/Monthly Saving scheme (not exceeding allowable limit)',
+             'amount': rebate_details.get(
+                 description='Contribution to deposit pension/Monthly Saving scheme (not exceeding allowable limit)').__dict__.get(
+                 'amount')})
+        particulars_of_income.append({
+            'particular': 'Investment in Govt. securities, Unit certificate, Mutual fund, ETF or Joint investment scheme Unit certificate',
+            'amount': rebate_details.get(description=
+                                         'Investment in Government securities, Unit certificate, Mutual fund, ETF or Joint investment scheme Unit certificate').__dict__.get(
+                'amount')})
+        particulars_of_income.append({'particular': 'Investment in securities listed with approved Stock Exchange',
+                                      'amount': rebate_details.get(
+                                          description='Investment in securities listed with approved Stock Exchange').__dict__.get(
+                                          'amount')})
+        particulars_of_income.append(
+            {'particular': 'Contribution to provident fund to which Provident Fund  Act, 1925 applies',
+             'amount': rebate_details.get(
+                 description='Personal Contribution to provident fund under Provident Fund Act, 1925').__dict__.get(
+                 'amount')})
+        particulars_of_income.append(
+            {'particular': 'Self contribution and employer’s contribution to Recognized Provident Fund',
+             'amount': rebate_details.get(
+                 description='Employers contribution with Self contribution to Recognized Provident Fund').__dict__.get(
+                 'amount')})
+        particulars_of_income.append({'particular': 'Contribution to approved Pension Fund',
+                                      'amount': rebate_details.get(
+                                          description='Contribution to approved Pension Fund').__dict__.get('amount')})
+        particulars_of_income.append(
+            {'particular': 'Contribution to Benevolent Fund and Group Insurance Premium',
+             'amount': rebate_details.get(
+                 description='Contribution to Benevolent Fund and Group Insurance Premium').__dict__.get('amount')})
+        particulars_of_income.append({'particular': 'Contribution to Zakat Fund',
+                                      'amount': rebate_details.get(
+                                          description='Contribution to Zakat Fund').__dict__.get('amount')})
+        particulars_of_income.append(
+            {'particular': 'Others, if any (Show the name of the investment from rebate page)',
+             'amount': rebate_details.get(description='Others Asset management companies').__dict__.get(
+                 'amount') + rebate_details.get(description='Others Mutual funds').__dict__.get(
+                 'amount') + rebate_details.get(description='Others ETF or joint investment schemes').__dict__.get(
+                 'amount')})
+        total_amount = rebate_details.get(
+            description='Life insurance premium or Contractual Deferred Annuity paid in Bangladesh (10% of Policy Value').__dict__.get(
+            'amount') + rebate_details.get(
+            description='Contribution to deposit pension/Monthly Saving scheme (not exceeding allowable limit)').__dict__.get(
+            'amount') + rebate_details.get(description=
+                                           'Investment in Government securities, Unit certificate, Mutual fund, ETF or Joint investment scheme Unit certificate').__dict__.get(
+            'amount') + rebate_details.get(description=
+                                           'Investment in Government securities, Unit certificate, Mutual fund, ETF or Joint investment scheme Unit certificate').__dict__.get(
+            'amount') + rebate_details.get(
+            description='Personal Contribution to provident fund under Provident Fund Act, 1925').__dict__.get(
+            'amount') + rebate_details.get(
+            description='Employers contribution with Self contribution to Recognized Provident Fund').__dict__.get(
+            'amount') + rebate_details.get(
+            description='Contribution to approved Pension Fund').__dict__.get('amount') + rebate_details.get(
+            description='Contribution to Benevolent Fund and Group Insurance Premium').__dict__.get(
+            'amount') + rebate_details.get(description='Contribution to Zakat Fund').__dict__.get(
+            'amount') + rebate_details.get(description='Others Asset management companies').__dict__.get(
+            'amount') + rebate_details.get(description='Others Mutual funds').__dict__.get(
+            'amount') + rebate_details.get(description='Others ETF or joint investment schemes').__dict__.get(
+            'amount')
+        particulars_of_income.append({'particular': 'Total investment (aggregate of 1 to 10)', 'amount': total_amount})
+        try:
+            report = Report.objects.get(user=request.user,
+                                        year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:])
+        except Report.DoesNotExist:
+            return Response("please fill out your rebate form", status=status.HTTP_400_BAD_REQUEST)
+        particulars_of_income.append(
+            {'particular': 'Amount of Tax Rebate',
+             'amount': min(total_amount * Decimal(0.15), 1000000, report.taxable_income)})
+        return Response({'basic_info': basic_info, 'summary_of_income': summery_of_income,
+                         'summary_of_balance_sheet': summary_of_balance_sheet,
+                         'particulars_of_income': particulars_of_income}, status=status.HTTP_200_OK)
