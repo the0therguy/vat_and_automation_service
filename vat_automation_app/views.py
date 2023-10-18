@@ -260,10 +260,16 @@ class PersonalDetailsView(APIView):
         if not request.user.email_verified:
             return Response('Email not verified', status=status.HTTP_400_BAD_REQUEST)
         personal_details = self.get_object(request.user)
+        assess_name = personal_details.assess_name
+        tin = personal_details.tin
         if personal_details:
             serializer = PersonalDetailsUpdateSerializer(personal_details, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
+                if assess_name != request.data['assess_name']:
+                    Transaction.objects.filter(user=request.user).update(assess_name=request.data['assess_name'])
+                if tin != request.data['tin']:
+                    Transaction.objects.filter(user=request.user).update(tin=request.data['tin'])
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
