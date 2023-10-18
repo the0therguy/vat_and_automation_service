@@ -1,7 +1,6 @@
 from .models import *
 
 
-
 def tax_calculator(amount, personal_details):
     slab_category = personal_details.are_you
     legal_guardian = personal_details.legal_guardian

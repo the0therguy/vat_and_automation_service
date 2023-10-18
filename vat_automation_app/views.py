@@ -42,9 +42,28 @@ class CategorySetupListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, category_name):
-        category_setup = CategorySetup.objects.filter(category_name=category_name, active=True).order_by('sequence')
-        serializer = CategorySetupSerializer(category_setup, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            personal_details = PersonalDetails.objects.get(user=request.user)
+        except PersonalDetails.DoesNotExist:
+            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+        year = str(datetime.now().year) + '-' + str(
+            datetime.now().year + 1)[2:]
+        request.data['tin'] = personal_details.tin
+        request.data['assess_name'] = personal_details.assess_name
+        try:
+            transaction = Transaction.objects.get(year=year, category_name=category_name, tin=personal_details.tin,
+                                                  assess_name=personal_details.assess_name)
+            details = Details.objects.filter(transaction=transaction).order_by('transaction_row')
+            details_serializer = DetailsSerializer(details, many=True)
+            again_transactions = Transaction.objects.filter(year=year, tin=personal_details.tin,
+                                                            assess_name=personal_details.assess_name)
+            if len(again_transactions) > 1:
+                return Response({'data': details_serializer.data, 'submit': False}, status=status.HTTP_200_OK)
+            return Response({'data': details_serializer.data, 'submit': True}, status=status.HTTP_200_OK)
+        except Transaction.DoesNotExist:
+            category_setup = CategorySetup.objects.filter(category_name=category_name, active=True).order_by('sequence')
+            serializer = CategorySetupSerializer(category_setup, many=True)
+            return Response({'data': serializer.data, 'submit': True}, status=status.HTTP_200_OK)
 
 
 class CategorySetupRetrieveView(APIView):
@@ -318,7 +337,8 @@ class TransactionView(APIView):
             transaction_serializer.save()
         else:
             transaction_serializer = TransactionSerializer(transaction.first())
-
+            Details.objects.filter(transaction=transaction.first()).delete()
+            Report.objects.filter(user=request.user, year=request.data['year']).delete()
         report, create = Report.objects.get_or_create(user=request.user, year=request.data['year'])
         details_data = []
         tax_amount = float(0)
