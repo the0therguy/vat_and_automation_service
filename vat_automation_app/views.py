@@ -271,13 +271,13 @@ class PersonalDetailsView(APIView):
     def get(self, request):
         personal_details = self.get_object(request.user)
         if not personal_details:
-            return Response("No personal details found", status=status.HTTP_404_NOT_FOUND)
+            return Response({"message": "No personal details found", "value": False}, status=status.HTTP_404_NOT_FOUND)
         serializer = PersonalDetailsSerializer(personal_details)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({"data": serializer.data, "value": True}, status=status.HTTP_200_OK)
 
     def post(self, request):
         if not request.user.email_verified:
-            return Response('Email not verified', status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": 'Email not verified', "value": False}, status=status.HTTP_400_BAD_REQUEST)
         personal_details = self.get_object(request.user)
         if personal_details:
             assess_name = personal_details.assess_name
@@ -289,8 +289,8 @@ class PersonalDetailsView(APIView):
                     Transaction.objects.filter(user=request.user).update(assess_name=request.data['assess_name'])
                 if tin != request.data['tin']:
                     Transaction.objects.filter(user=request.user).update(tin=request.data['tin'])
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"data": serializer.data, "value": True}, status=status.HTTP_200_OK)
+            return Response({"data": serializer.errors, "value": False}, status=status.HTTP_400_BAD_REQUEST)
 
         request.data['user'] = request.user.id
         request.data['income_year_ended_on'] = datetime(datetime.now().year, 6, 30).date()
@@ -301,8 +301,8 @@ class PersonalDetailsView(APIView):
         serializer = PersonalDetailsSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"data": serializer.data, "value": True}, status=status.HTTP_200_OK)
+        return Response({"data": serializer.errors, "value": False}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TransactionView(APIView):
@@ -432,7 +432,8 @@ class SalaryReportView(APIView):
     def get(self, request):
         personal_details = PersonalDetails.objects.get(user=request.user)
         if not personal_details:
-            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "No personal details found", "value": False},
+                            status=status.HTTP_400_BAD_REQUEST)
         basic_info = {'Name of the Assess': personal_details.assess_name, 'TIN': personal_details.tin}
         salary_government_transaction = self.get_transaction(user=request.user,
                                                              year=str(datetime.now().year) + '-' + str(
@@ -464,7 +465,8 @@ class SalaryReportView(APIView):
 
         return Response(
             {'government_details': salary_government_serializer,
-             'private_details': salary_private_serializer, 'basic_info': basic_info}, status=status.HTTP_200_OK)
+             'private_details': salary_private_serializer, 'basic_info': basic_info, "value": True},
+            status=status.HTTP_200_OK)
 
 
 class AssetAndLiabilityReportView(APIView):
@@ -507,7 +509,8 @@ class ReturnView(APIView):
     def get(self, request):
         personal_details = PersonalDetails.objects.get(user=request.user)
         if not personal_details:
-            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "No personal details found", "value": False},
+                            status=status.HTTP_400_BAD_REQUEST)
         basic_info = {}
         assesment_year = str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:]
         basic_info['Name_of_the_Taxpayer'] = personal_details.assess_name
@@ -581,7 +584,7 @@ class ReturnView(APIView):
         particulars_of_tax_payment = []
         report = self.get_report(user=request.user)
         if not report:
-            return Response('Please fill report first', status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": 'Please fill report first', "value": False}, status=status.HTTP_400_BAD_REQUEST)
         tax_consumption.append({'particular': 'Gross Tax on Taxable Income', 'amount': report.taxable_income})
         if personal_details.resident_status == 'Non-Resident':
             tax_consumption.append({'particular': 'Tax Rebate (annex Schedule 5)', 'amount': float(0)})
@@ -603,7 +606,8 @@ class ReturnView(APIView):
                 {'particular': 'Tax Paid with this Return', 'amount': float(0)})
             return Response({'Basic_Info': basic_info, 'Particulars_of_Income': particulars_of_income,
                              'Tax_Consumption': tax_consumption,
-                             'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
+                             'Particulars_of_Tax_Payment': particulars_of_tax_payment, "value": True},
+                            status=status.HTTP_200_OK)
         if report.net_tax > float(0):
             if personal_details.city == 'Dhaka or Chattagram City Corporation':
                 minimum_tax = float(5000)
@@ -650,7 +654,8 @@ class ReturnView(APIView):
 
             return Response({'Basic_Info': basic_info, 'Particulars_f_Income': particulars_of_income,
                              'Tax_Consumption': tax_consumption,
-                             'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
+                             'Particulars_of_Tax_Payment': particulars_of_tax_payment, "value": True},
+                            status=status.HTTP_200_OK)
 
         tax_payment_details = Details.objects.filter(transaction=tax_payment_transaction).order_by('transaction_row')
         if not tax_payment_details:
@@ -672,7 +677,8 @@ class ReturnView(APIView):
 
             return Response({'Basic_Info': basic_info, 'Particulars_f_Income': particulars_of_income,
                              'Tax_Consumption': tax_consumption,
-                             'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
+                             'Particulars_of_Tax_Payment': particulars_of_tax_payment, "value": True},
+                            status=status.HTTP_200_OK)
 
         else:
             tax_consumption.append({'particular': 'Tax Deducted or Collected at Source (attach proof)',
@@ -701,7 +707,8 @@ class ReturnView(APIView):
 
         return Response({'Basic_Info': basic_info, 'Particulars_f_Income': particulars_of_income,
                          'Tax_Consumption': tax_consumption,
-                         'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
+                         'Particulars_of_Tax_Payment': particulars_of_tax_payment, "value": True},
+                        status=status.HTTP_200_OK)
 
 
 class CheckAdmin(APIView):
@@ -725,7 +732,8 @@ class BusinessReport(APIView):
     def get(self, request):
         personal_details = PersonalDetails.objects.get(user=request.user)
         if not personal_details:
-            return Response("No personal details found", status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "No personal details found", "value": False},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         basic_info = {'Name of the Assess': personal_details.assess_name, 'TIN': personal_details.tin}
         business_transaction = self.get_transaction(user=request.user,
@@ -733,7 +741,8 @@ class BusinessReport(APIView):
                                                         datetime.now().year + 1)[2:],
                                                     category_name='Business')
         if not business_transaction:
-            return Response("Please fill out your business form first", status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "Please fill out your business form first", "value": False},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         basic_info['Name_of_the_Taxpayer'] = business_transaction.assess_name
         basic_info['TIN'] = business_transaction.tin
@@ -868,13 +877,14 @@ class BusinessReport(APIView):
                 report = Report.objects.get(user=request.user,
                                             year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:])
             except Report.DoesNotExist:
-                return Response("please fill out your rebate form", status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": "please fill out your rebate form", "value": False},
+                                status=status.HTTP_400_BAD_REQUEST)
 
             particulars_of_income.append(
                 {'particular': 'Amount of Tax Rebate', 'amount': min(report.taxable_income, 0, 1000000)})
             return Response({'basic_info': basic_info, 'summary_of_income': summery_of_income,
                              'summary_of_balance_sheet': summary_of_balance_sheet,
-                             'particulars_of_income': particulars_of_income}, status=status.HTTP_200_OK)
+                             'particulars_of_income': particulars_of_income, "value": True}, status=status.HTTP_200_OK)
         rebate_details = Details.objects.filter(transaction=rebate_transaction).order_by('transaction_row')
 
         if not rebate_details:
@@ -903,13 +913,14 @@ class BusinessReport(APIView):
                 report = Report.objects.get(user=request.user,
                                             year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:])
             except Report.DoesNotExist:
-                return Response("please fill out your rebate form", status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": "please fill out your rebate form", "value": False},
+                                status=status.HTTP_400_BAD_REQUEST)
 
             particulars_of_income.append(
                 {'particular': 'Amount of Tax Rebate', 'amount': min(report.taxable_income, 0, 1000000)})
             return Response({'basic_info': basic_info, 'summary_of_income': summery_of_income,
                              'summary_of_balance_sheet': summary_of_balance_sheet,
-                             'particulars_of_income': particulars_of_income}, status=status.HTTP_200_OK)
+                             'particulars_of_income': particulars_of_income, "value": True}, status=status.HTTP_200_OK)
 
         particulars_of_income.append({
             'particular': 'Life insurance premium or Contractual "Deferred Annuity" paid in Bangladesh (10% of Policy Value)',
@@ -981,10 +992,11 @@ class BusinessReport(APIView):
             report = Report.objects.get(user=request.user,
                                         year=str(datetime.now().year) + '-' + str(datetime.now().year + 1)[2:])
         except Report.DoesNotExist:
-            return Response("please fill out your rebate form", status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "please fill out your rebate form", "value": False},
+                            status=status.HTTP_400_BAD_REQUEST)
         particulars_of_income.append(
             {'particular': 'Amount of Tax Rebate',
              'amount': min(total_amount * Decimal(0.15), 1000000, report.taxable_income)})
         return Response({'basic_info': basic_info, 'summary_of_income': summery_of_income,
                          'summary_of_balance_sheet': summary_of_balance_sheet,
-                         'particulars_of_income': particulars_of_income}, status=status.HTTP_200_OK)
+                         'particulars_of_income': particulars_of_income, "value": True}, status=status.HTTP_200_OK)
