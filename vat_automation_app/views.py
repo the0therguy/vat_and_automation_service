@@ -279,9 +279,9 @@ class PersonalDetailsView(APIView):
         if not request.user.email_verified:
             return Response('Email not verified', status=status.HTTP_400_BAD_REQUEST)
         personal_details = self.get_object(request.user)
-        assess_name = personal_details.assess_name
-        tin = personal_details.tin
         if personal_details:
+            assess_name = personal_details.assess_name
+            tin = personal_details.tin
             serializer = PersonalDetailsUpdateSerializer(personal_details, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -329,7 +329,10 @@ class TransactionView(APIView):
         request.data['tin'] = personal_details.tin
         request.data['assess_name'] = personal_details.assess_name
         transaction = Transaction.objects.filter(**request.data)
+        tax_exempted = 0.0
         if not transaction:
+            if request.data['category_name'] == 'Rebate':
+                return Response('Please fill up the other form first', status=status.HTTP_400_BAD_REQUEST)
             request.data['uuid'] = str(uuid.uuid4())
             transaction_serializer = TransactionSerializer(data=request.data)
             if not transaction_serializer.is_valid():
@@ -369,6 +372,8 @@ class TransactionView(APIView):
                     return Response(detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 if not detail['tax_exempted']:
                     tax_amount += float(detail['amount'])  # Convert amount to float
+                else:
+                    tax_exempted += float(detail['amount'])  # Convert amount to float
                 detail_serializer.save()
                 details_data.append(detail_serializer.data)
         if request.data['category_name'] == 'Rebate':
@@ -396,6 +401,7 @@ class TransactionView(APIView):
                                               amount=report.taxable_income)  # Convert to float
         report.income_slab = income_slab
         report.net_tax = net_tax
+        report.tax_exempted_amount = Decimal(tax_exempted)
         report.save()
         transaction = Transaction.objects.get(id=transaction_serializer.data.get('id'))
         transaction.taxable_income = report.taxable_income
@@ -598,12 +604,15 @@ class ReturnView(APIView):
             return Response({'Basic_Info': basic_info, 'Particulars_of_Income': particulars_of_income,
                              'Tax_Consumption': tax_consumption,
                              'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
-        if report.net_tax == float(0):
-            minimum_tax = float(0)
-        elif float(1) <= report.net_tax <= float(5000):
-            minimum_tax = float(5000)
+        if report.net_tax > float(0):
+            if personal_details.city == 'Dhaka or Chattagram City Corporation':
+                minimum_tax = float(5000)
+            elif personal_details.city == 'Any Area Other than City Corporation':
+                minimum_tax = float(3000)
+            else:
+                minimum_tax = float(4000)
         else:
-            minimum_tax = report.net_tax
+            minimum_tax = float(0)
 
         tax_consumption.append({'particular': 'Tax Rebate (annex Schedule 5)', 'amount': report.rebate})
         tax_consumption.append(
@@ -616,14 +625,79 @@ class ReturnView(APIView):
         tax_consumption.append(
             {'particular': 'Delay Interest, Penalty or any other amount Under Income Tax Act (if any)',
              'amount': float(0)})
+        tax_consumption.append({'particular': 'Total Amount  Payable (16 + 17 + 18)', 'amount': max(minimum_tax,
+                                                                                                    abs(report.taxable_income - report.rebate))})
+        tax_payment_transaction = self.get_transaction(user=request.user,
+                                                       year=str(datetime.now().year) + '-' + str(
+                                                           datetime.now().year + 1)[2:],
+                                                       category_name='Tax_Payment')
+
+        if not tax_payment_transaction:
+            particulars_of_tax_payment.append(
+                {'particular': 'Tax Deducted or Collected at Source (attach proof)', 'amount': float(0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Advance Tax paid (attach proof)', 'amount': float(0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Adjustment of Tax Refund {mention assessment year(s) of refund}', 'amount': float(0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Tax Paid with this Return', 'amount': float(0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Total Tax Paid and Adjusted (20 + 21 + 22 + 23)', 'amount': float(0)})
+            particulars_of_tax_payment.append({'particular': 'Excess Payment (24 – 19)', 'amount': abs(max(minimum_tax,
+                                                                                                           abs(report.taxable_income - report.rebate)) - 0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Tax Exempted / Tax Free Income (attach proof)', 'amount': report.tax_exempted_amount})
+
+            return Response({'Basic_Info': basic_info, 'Particulars_f_Income': particulars_of_income,
+                             'Tax_Consumption': tax_consumption,
+                             'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
+
+        tax_payment_details = Details.objects.filter(transaction=tax_payment_transaction).order_by('transaction_row')
+        if not tax_payment_details:
+            particulars_of_tax_payment.append(
+                {'particular': 'Tax Deducted or Collected at Source (attach proof)', 'amount': float(0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Advance Tax paid (attach proof)', 'amount': float(0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Adjustment of Tax Refund {mention assessment year(s) of refund}', 'amount': float(0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Tax Paid with this Return', 'amount': float(0)})
+            particulars_of_tax_payment.append(
+                {'particular': 'Total Tax Paid and Adjusted (20 + 21 + 22 + 23)', 'amount': float(0)})
+            particulars_of_tax_payment.append({'particular': 'Excess Payment (24 – 19)', 'amount': abs(max(minimum_tax,
+                                                                                                           abs(report.taxable_income - report.rebate)) - 0)})
+
+            particulars_of_tax_payment.append(
+                {'particular': 'Tax Exempted / Tax Free Income (attach proof)', 'amount': report.tax_exempted_amount})
+
+            return Response({'Basic_Info': basic_info, 'Particulars_f_Income': particulars_of_income,
+                             'Tax_Consumption': tax_consumption,
+                             'Particulars_of_Tax_Payment': particulars_of_tax_payment}, status=status.HTTP_200_OK)
+
+        else:
+            tax_consumption.append({'particular': 'Tax Deducted or Collected at Source (attach proof)',
+                                    'amount': tax_payment_details.get(
+                                        description='Tax deducted or collected at source (attach proof)').__dict__.get(
+                                        'amount')})
+            tax_consumption.append({'particular': 'Advance tax paid (attach proof)', 'amount': tax_payment_details.get(
+                description='Advance tax paid (attach proof)').__dict__.get('amount')})
+            tax_consumption.append({'particular': 'Adjustment of Tax Refund {mention assessment year(s) of refund}',
+                                    'amount': tax_payment_details.get(
+                                        description='Adjustment of Tax Refund {mention assessment year(s) of refund}').__dict__.get(
+                                        'amount')})
+            tax_consumption.append({'particular': 'Tax Paid with this Return', 'amount': tax_payment_details.get(
+                description='Tax Paid with this Return').__dict__.get('amount')})
+            tax_consumption.append(
+                {'particular': 'Total Tax Paid and Adjusted (20 + 21 + 22 + 23)', 'amount': tax_payment_details.get(
+                    description='Tax deducted or collected at source (attach proof)').__dict__.get(
+                    'amount') + tax_payment_details.get(
+                    description='Advance tax paid (attach proof)').__dict__.get('amount') + tax_payment_details.get(
+                    description='Adjustment of Tax Refund {mention assessment year(s) of refund}').__dict__.get(
+                    'amount') + tax_payment_details.get(
+                    description='Tax Paid with this Return').__dict__.get('amount')})
+
         particulars_of_tax_payment.append(
-            {'particular': 'Tax Deducted or Collected at Source (attach proof)', 'amount': float(0)})
-        particulars_of_tax_payment.append(
-            {'particular': 'Advance Tax paid (attach proof)', 'amount': float(0)})
-        particulars_of_tax_payment.append(
-            {'particular': 'Adjustment of Tax Refund {mention assessment year(s) of refund}', 'amount': float(0)})
-        particulars_of_tax_payment.append(
-            {'particular': 'Tax Paid with this Return', 'amount': float(0)})
+            {'particular': 'Tax Exempted / Tax Free Income (attach proof)', 'amount': report.tax_exempted_amount})
 
         return Response({'Basic_Info': basic_info, 'Particulars_f_Income': particulars_of_income,
                          'Tax_Consumption': tax_consumption,

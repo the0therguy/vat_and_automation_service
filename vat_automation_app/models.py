@@ -41,7 +41,8 @@ CATEGORY_CHOICE = [
     ('House Income', 'House Income'),
     ('Business', 'Business'),
     ('Rebate', 'Rebate'),
-    ('Expense', 'Expense')
+    ('Expense', 'Expense'),
+    ('Tax Payment', 'Tax Payment')
 ]
 
 
@@ -123,6 +124,8 @@ class Report(models.Model):
     income_slab = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     rebate = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     net_tax = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    tax_exempted_amount = models.DecimalField(default=0.0, max_digits=10, decimal_places=2, null=True, blank=True)
+
     user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
